@@ -232,6 +232,8 @@ resource "aws_instance" "logger" {
   # Provision the AWS Ubuntu 16.04 AMI from scratch.
   provisioner "remote-exec" {
     inline = [
+      "echo ${aws_instance.phantom.id} > phantom_instance_id.txt",
+      "curl -ku admin:$(cat phantom_instance_id.txt) https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt"
       "sudo add-apt-repository universe && sudo apt-get -qq update && sudo apt-get -qq install -y git",
       "echo 'logger' | sudo tee /etc/hostname && sudo hostnamectl set-hostname logger",
       "sudo adduser --disabled-password --gecos \"\" vagrant && echo 'vagrant:vagrant' | sudo chpasswd",
@@ -246,7 +248,6 @@ resource "aws_instance" "logger" {
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
-      "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt"
     ]
 
     connection {
