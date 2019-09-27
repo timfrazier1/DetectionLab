@@ -190,12 +190,29 @@ resource "aws_instance" "phantom" {
 
   subnet_id              = aws_subnet.default.id
   vpc_security_group_ids = [aws_security_group.phantom.id]
+  key_name               = aws_key_pair.auth.key_name
   private_ip             = "192.168.38.110"
+
+  provisioner "remote-exec" {
+    inline = [
+      "echo ${aws_instance.phantom.id} > instance_id.txt",
+      "which psql >> output1.txt",
+      "sleep 120",
+      "sudo psql -d phantom -c 'select key from token where id=1;' | grep = | sed 's/^[[:space:]]*//g' > token.txt",
+      "curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\"}'",
+    ]
+
+    connection {
+      host        = coalesce(self.public_ip, self.private_ip)
+      type        = "ssh"
+      user        = "centos"
+      private_key = file(var.private_key_path)
+    }
+  }
 
   root_block_device {
     delete_on_termination = true
   }
-
 }
 
 resource "aws_instance" "logger" {
@@ -220,6 +237,7 @@ resource "aws_instance" "logger" {
       "sudo adduser --disabled-password --gecos \"\" vagrant && echo 'vagrant:vagrant' | sudo chpasswd",
       "sudo mkdir /home/vagrant/.ssh && sudo cp /home/ubuntu/.ssh/authorized_keys /home/vagrant/.ssh/authorized_keys && sudo chown -R vagrant:vagrant /home/vagrant/.ssh",
       "echo 'vagrant    ALL=(ALL:ALL) NOPASSWD:ALL' | sudo tee -a /etc/sudoers",
+      "sudo git clone https://github.com/timfrazier1/AdversarySimulation.git /opt/AdversarySimulation",
       "sudo git clone https://github.com/clong/DetectionLab.git /opt/DetectionLab",
       "sudo sed -i 's/eth1/eth0/g' /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo sed -i 's/ETH1/ETH0/g' /opt/DetectionLab/Vagrant/bootstrap.sh",
@@ -228,6 +246,7 @@ resource "aws_instance" "logger" {
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
+      "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt"
     ]
 
     connection {

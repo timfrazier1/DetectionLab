@@ -108,13 +108,32 @@ install_splunk() {
     /opt/splunk/bin/splunk add index suricata -auth 'admin:changeme'
     /opt/splunk/bin/splunk add index threathunting -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_forwarder/splunk-add-on-for-microsoft-windows_500.tgz -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/add-on-for-microsoft-sysmon_800.tgz -auth 'admin:changeme'
+    #/opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/add-on-for-microsoft-sysmon_800.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/asn-lookup-generator_101.tgz -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/lookup-file-editor_331.tgz
+    #/opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/lookup-file-editor_331.tgz
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/threathunting_134.tgz  -auth 'admin:changeme'
+    # AdvSim apps
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_275.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-remote-search_109.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-app-for-phantom-reporting_100.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/base64_11.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/add-on-for-microsoft-sysmon_810.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/lookup-file-editor_332.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-common-information-model-cim_4130.tgz -auth 'admin:changeme'
+    cd /opt/splunk/etc/apps
+    git clone https://github.com/daveherrald/SA-attck_nav.git
+    cd -
+
+    # Fix admin role to include Phantom pieces
+    curl -k -u admin:changeme https://localhost:8089/services/authorization/roles/admin -d imported_roles=phantom -d imported_roles=power -d imported_roles=user
+    curl -k -u admin:changeme https://localhost:8089/services/servicesNS/nobody/phantom/configs/conf-phantom/verify_certs\?output_mode\=json -d value=0
+
+    # Update master layer in ATT&CK Nav
+    curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
+
     # Add custom Macro definitions for ThreatHunting App
     cp /vagrant/resources/splunk_server/macros.conf /opt/splunk/etc/apps/ThreatHunting/default/macros.conf
     # Fix Windows TA macros
