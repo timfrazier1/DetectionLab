@@ -89,6 +89,45 @@ resource "aws_security_group" "logger" {
   }
 }
 
+# Our default security group for the Phantom host
+resource "aws_security_group" "phantom" {
+  name        = "phantom_security_group"
+  description = "DetectionLab: Security Group for the phantom host"
+  vpc_id      = aws_vpc.default.id
+
+  # SSH access
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = var.ip_whitelist
+  }
+
+  # Web UI access
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = var.ip_whitelist
+  }
+
+  # Allow all traffic from the private subnet
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["192.168.38.0/24"]
+  }
+
+  # outbound internet access
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_security_group" "windows" {
   name        = "windows_security_group"
   description = "DetectionLab: Security group for the Windows hosts"
@@ -138,6 +177,25 @@ resource "aws_security_group" "windows" {
 resource "aws_key_pair" "auth" {
   key_name   = var.public_key_name
   public_key = file(var.public_key_path)
+}
+
+resource "aws_instance" "phantom" {
+  instance_type = "t2.medium"
+  ami           = coalesce(var.phantom_ami, data.aws_ami.phantom_ami.image_id)
+
+  tags = {
+    Name = "Phantom 4.5"
+  }
+#  ami = "ami-081754fc6dc359927"
+
+  subnet_id              = aws_subnet.default.id
+  vpc_security_group_ids = [aws_security_group.phantom.id]
+  private_ip             = "192.168.38.110"
+
+  root_block_device {
+    delete_on_termination = true
+  }
+
 }
 
 resource "aws_instance" "logger" {

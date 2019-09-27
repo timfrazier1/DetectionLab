@@ -1,5 +1,5 @@
-variable "region" {
-  default = "us-west-1"
+eariable "region" {
+  default = "us-east-1"
 }
 
 variable "profile" {
@@ -46,6 +46,16 @@ variable "external_dns_servers" {
   default     = ["8.8.8.8"]
 }
 
+# Use Data Sources to resolve the AMI-ID for the Phantom AMI
+data "aws_ami" "phantom_ami" {
+  owners = ["679593333241"]
+
+  filter {
+    name   = "name"
+    values = ["Splunk Phantom 4.5 Patch 2-80ad187b-5f54-4327-9047-fb6fb36e7019-ami-0bcb484c53aba9932.4"]
+  }
+}
+
 # Use Data Sources to resolve the AMI-ID for the Ubuntu 16.04 AMI
 data "aws_ami" "logger_ami" {
   owners = ["099720109477"]
@@ -90,6 +100,11 @@ data "aws_ami" "win10_ami" {
 
 # If you are building your own AMIs, replace the default values below with
 # the AMI IDs
+variable "phantom_ami" {
+  type    = string
+  default = ""
+}
+
 variable "logger_ami" {
   type    = string
   default = ""
