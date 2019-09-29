@@ -238,8 +238,6 @@ resource "aws_instance" "logger" {
     inline = [
       "echo ${resource.aws_instance.phantom.id} > phantom_instance_id.txt",
       "cat phantom_instance_id.txt",
-      "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt",
-      "cat phantom_token.txt",
       "sudo add-apt-repository universe && sudo apt-get -qq update && sudo apt-get -qq install -y git",
       "echo 'logger' | sudo tee /etc/hostname && sudo hostnamectl set-hostname logger",
       "sudo adduser --disabled-password --gecos \"\" vagrant && echo 'vagrant:vagrant' | sudo chpasswd",
@@ -253,8 +251,19 @@ resource "aws_instance" "logger" {
       "sudo sed -i 's#/vagrant/resources#/opt/DetectionLab/Vagrant/resources#g' /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
+      "which python > py.txt",
+      "which python2.7 > py2.7.txt",
+      "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt",
+      "cat phantom_token.txt",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
       "curl -ku admin:changeme https://localhost:8089/servicesNS/nobody/phantom/update_phantom_config\?output_mode\=json   -d '{\"verify_certs\":\"false\",\"enable_logging\":\"true\",\"config\":[{\"ph-auth-token\":\"'$(cat phantom_token.txt)'\",\"server\":\"https://192.168.38.110\",\"custom_name\":\"DectLab Phantom\",\"default\":true,\"user\":\"\",\"ph_auth_config_id\":\"k141js0d\",\"proxy\":\"\",\"validate\":true}],\"accepted\":\"true\",\"save\":true}'",
+      "python /opt/AdversarySimulation/install_phantom_app.py /opt/AdversarySimulation/phantom_apps/phatomicredteam.tgz $(cat phantom_instance_id.txt)",
+      "python /opt/AdversarySimulation/install_phantom_app.py /opt/AdversarySimulation/phantom_apps/phwinrm.tgz $(cat phantom_instance_id.txt)",
+      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/asset -d '{\"configuration\": {\"verify_cert\": true, \"base_url\": \"https://github.com/redcanaryco/atomic-red-team.git\"}, \"name\": \"art_main_repo\", \"product_name\": \"Atomic Red Team\", \"product_vendor\": \"Red Canary\"}'",
+      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/container -d '{\"label\": \"events\", \"name\": \"Example Container\"}'",
+      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/action_run -d '{\"action\": \"test connectivity\", \"container_id[{\"assets\": [\"art_main_repo\"], \"parameters\": [], \"app_id\": 193}]}'",
+      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/asset -d '{\"name\": \"splunk_dect_lab\", \"product_vendor\": \"Splunk Inc.\", \"product_name\": \"Splunk Enterprise\", \"configuration\": {\"username\": \"admin\", \"max_container\": 100, \"ingest\": {\"container_label\": \"splunk_events\", \"start_time_epoch_utc\": null}, \"retry_count\": \"3\", \"verify_server_cert\": false, \"device\": \"https://192.168.38.105\", \"timezone\": \"UTC\", \"password\": \"changeme\", \"port\": \"8089\"}}'",
+      
     ]
 
     connection {
