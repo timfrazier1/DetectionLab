@@ -197,8 +197,12 @@ resource "aws_instance" "phantom" {
     inline = [
       "echo ${aws_instance.phantom.id} > instance_id.txt",
       "which psql >> output1.txt",
-      "sleep 120",
+      "sleep 480",
+      "which psql >> output2.txt",
       "sudo psql -d phantom -c 'select key from token where id=1;' | grep = | sed 's/^[[:space:]]*//g' > token.txt",
+      "sudo psql -d phantom -c \"update token set allowed_ips = '[\"any\"]';\"",
+      "sudo psql -d phantom -c 'select * from token;' > token_table.txt",
+      "cat token.txt",
       "curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\"}'",
     ]
 
@@ -232,8 +236,10 @@ resource "aws_instance" "logger" {
   # Provision the AWS Ubuntu 16.04 AMI from scratch.
   provisioner "remote-exec" {
     inline = [
-      "echo ${aws_instance.phantom.id} > phantom_instance_id.txt",
-      "curl -ku admin:$(cat phantom_instance_id.txt) https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt",
+      "echo ${resource.aws_instance.phantom.id} > phantom_instance_id.txt",
+      "cat phantom_instance_id.txt",
+      "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt",
+      "cat phantom_token.txt",
       "sudo add-apt-repository universe && sudo apt-get -qq update && sudo apt-get -qq install -y git",
       "echo 'logger' | sudo tee /etc/hostname && sudo hostnamectl set-hostname logger",
       "sudo adduser --disabled-password --gecos \"\" vagrant && echo 'vagrant:vagrant' | sudo chpasswd",
@@ -248,6 +254,7 @@ resource "aws_instance" "logger" {
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
+      "curl -ku admin:changeme https://localhost:8089/servicesNS/nobody/phantom/update_phantom_config\?output_mode\=json   -d '{\"verify_certs\":\"false\",\"enable_logging\":\"true\",\"config\":[{\"ph-auth-token\":\"'$(cat phantom_token.txt)'\",\"server\":\"https://192.168.38.110\",\"custom_name\":\"DectLab Phantom\",\"default\":true,\"user\":\"\",\"ph_auth_config_id\":\"k141js0d\",\"proxy\":\"\",\"validate\":true}],\"accepted\":\"true\",\"save\":true}'",
     ]
 
     connection {

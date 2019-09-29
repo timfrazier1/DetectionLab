@@ -123,16 +123,11 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/add-on-for-microsoft-sysmon_810.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/lookup-file-editor_332.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-common-information-model-cim_4130.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-security-essentials_252.tgz -auth 'admin:changeme'
     cd /opt/splunk/etc/apps
     git clone https://github.com/daveherrald/SA-attck_nav.git
     cd -
 
-    # Fix admin role to include Phantom pieces
-    curl -k -u admin:changeme https://localhost:8089/services/authorization/roles/admin -d imported_roles=phantom -d imported_roles=power -d imported_roles=user
-    curl -k -u admin:changeme https://localhost:8089/services/servicesNS/nobody/phantom/configs/conf-phantom/verify_certs\?output_mode\=json -d value=0
-
-    # Update master layer in ATT&CK Nav
-    curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
 
     # Add custom Macro definitions for ThreatHunting App
     cp /vagrant/resources/splunk_server/macros.conf /opt/splunk/etc/apps/ThreatHunting/default/macros.conf
@@ -173,6 +168,13 @@ install_splunk() {
     /opt/splunk/bin/splunk enable boot-start
     # Generate the ASN lookup table
     /opt/splunk/bin/splunk search "|asngen | outputlookup asn" -auth 'admin:changeme'
+
+    # AdvSim: Fix admin role to include Phantom pieces
+    curl -k -u admin:changeme https://localhost:8089/services/authorization/roles/admin -d imported_roles=phantom -d imported_roles=power -d imported_roles=user
+    curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/phantom/configs/conf-phantom/verify_certs\?output_mode\=json -d value=0
+
+    # AdvSim: Update master layer in ATT&CK Nav
+    curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
   fi
 }
 
