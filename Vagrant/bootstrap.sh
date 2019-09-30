@@ -114,7 +114,7 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz  -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/threathunting_134.tgz  -auth 'admin:changeme'
+    #/opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/threathunting_134.tgz  -auth 'admin:changeme'
     # AdvSim apps
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_275.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-remote-search_109.tgz -auth 'admin:changeme'
@@ -124,8 +124,10 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/lookup-file-editor_332.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-common-information-model-cim_4130.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-security-essentials_252.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/threathunting_141.tgz -auth 'admin:changeme'
     cd /opt/splunk/etc/apps
     git clone https://github.com/daveherrald/SA-attck_nav.git
+    cp /opt/AdversarySimulation/resources/dect_lab_attck_assets.csv ./SA-attck_nav/lookups/attck_assets.csv
     cd -
 
 
@@ -175,7 +177,8 @@ install_splunk() {
 
     # AdvSim: Update master layer in ATT&CK Nav
     curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
-    # TODO need to add win10 and DC to attck_assets.csv file
+    # Update ThreatHunting Permissions
+    curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/ThreatHunting/acl -d sharing=global -d owner=nobody
   fi
 }
 
