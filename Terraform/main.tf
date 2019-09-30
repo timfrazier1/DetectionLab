@@ -195,16 +195,28 @@ resource "aws_instance" "phantom" {
 
   provisioner "remote-exec" {
     inline = [
-      "echo ${aws_instance.phantom.id} > instance_id.txt",
+      "echo ${aws_instance.phantom.id} > phantom_instance_id.txt",
       "which psql >> output1.txt",
       "sleep 480",
       "which psql >> output2.txt",
       "sudo psql -d phantom -c 'select key from token where id=1;' | grep = | sed 's/^[[:space:]]*//g' > token.txt",
-      "sudo psql -d phantom -c \"update token set allowed_ips = '[\"any\"]';\"",
+      "sudo psql -d phantom -c \"update token set allowed_ips = '[\\\"any\\\"]';\"",
       "sudo psql -d phantom -c 'select * from token;' > token_table.txt",
+      "sudo psql -d phantom -c \"insert into scm(branch, disabled, name, read_only, type, uri, version) VALUES ('master', 'f', 'AdvSim', 'f','git','https://github.com/daveherrald/AdvSim.git',1);\"",
       "cat token.txt",
-      "curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\"}'",
+      "sudo git clone https://github.com/timfrazier1/AdversarySimulation.git /opt/AdversarySimulation",
+      "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phatomicredteam.tgz $(cat phantom_instance_id.txt)",
+      "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phwinrm.tgz $(cat phantom_instance_id.txt)",
+      "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"configuration\": {\"verify_cert\": true, \"base_url\": \"https://github.com/redcanaryco/atomic-red-team.git\"}, \"name\": \"art_main_repo\", \"product_name\": \"Atomic Red Team\", \"product_vendor\": \"Red Canary\"}'",
+      "sudo curl -ku admin:password https://localhost/rest/container -d '{\"label\": \"events\", \"name\": \"Example Container\"}'",
+      "sudo curl -ku admin:password https://localhost/rest/action_run -d '{\"action\": \"test connectivity\", \"container_id[{\"assets\": [\"art_main_repo\"], \"parameters\": [], \"app_id\": 193}]}'",
+      "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"name\": \"splunk_dect_lab\", \"product_vendor\": \"Splunk Inc.\", \"product_name\": \"Splunk Enterprise\", \"configuration\": {\"username\": \"admin\", \"max_container\": 100, \"ingest\": {\"container_label\": \"splunk_events\", \"start_time_epoch_utc\": null}, \"retry_count\": \"3\", \"verify_server_cert\": false, \"device\": \"https://192.168.38.105\", \"timezone\": \"UTC\", \"password\": \"changeme\", \"port\": \"8089\"}}'",
+      "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\"}'",
+      "sudo curl -ku admin:password https://localhost/rest/scm/3 -d '{\"pull\": true, \"force\": true}'",
+      "sudo curl -ku admin:password https://localhost/rest/playbook?_filter_name=%22Modular%20Simulation%22 | cut -d\":\" -f 14 | cut -d\",\" -f 1 | cut -d\" \" -f2 > playbook_id.txt",
+      "sudo curl -ku admin:password https://localhost/rest/playbook/$(cat playbook_id.txt) -d '{\"active\": true, \"cancel_runs\": true}'",
     ]
+# Need a WinRM phantom asset also
 
     connection {
       host        = coalesce(self.public_ip, self.private_ip)
@@ -236,8 +248,10 @@ resource "aws_instance" "logger" {
   # Provision the AWS Ubuntu 16.04 AMI from scratch.
   provisioner "remote-exec" {
     inline = [
-      "echo ${resource.aws_instance.phantom.id} > phantom_instance_id.txt",
+      "echo ${aws_instance.phantom.id} > phantom_instance_id.txt",
       "cat phantom_instance_id.txt",
+      "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | cut -d\":\" -f 10 | cut -d'\"' -f 2 > phantom_token.txt",
+      "cat phantom_token.txt",
       "sudo add-apt-repository universe && sudo apt-get -qq update && sudo apt-get -qq install -y git",
       "echo 'logger' | sudo tee /etc/hostname && sudo hostnamectl set-hostname logger",
       "sudo adduser --disabled-password --gecos \"\" vagrant && echo 'vagrant:vagrant' | sudo chpasswd",
@@ -251,18 +265,8 @@ resource "aws_instance" "logger" {
       "sudo sed -i 's#/vagrant/resources#/opt/DetectionLab/Vagrant/resources#g' /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
-      "which python > py.txt",
-      "which python2.7 > py2.7.txt",
-      "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | python -c \"import sys,json; print json.load(sys.stdin)['first_name']\" > phantom_token.txt",
-      "cat phantom_token.txt",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
       "curl -ku admin:changeme https://localhost:8089/servicesNS/nobody/phantom/update_phantom_config\\?output_mode\\=json   -d '{\"verify_certs\":\"false\",\"enable_logging\":\"true\",\"config\":[{\"ph-auth-token\":\"'$(cat phantom_token.txt)'\",\"server\":\"https://192.168.38.110\",\"custom_name\":\"DectLab Phantom\",\"default\":true,\"user\":\"\",\"ph_auth_config_id\":\"k141js0d\",\"proxy\":\"\",\"validate\":true}],\"accepted\":\"true\",\"save\":true}'",
-      "python /opt/AdversarySimulation/install_phantom_app.py /opt/AdversarySimulation/phantom_apps/phatomicredteam.tgz $(cat phantom_instance_id.txt)",
-      "python /opt/AdversarySimulation/install_phantom_app.py /opt/AdversarySimulation/phantom_apps/phwinrm.tgz $(cat phantom_instance_id.txt)",
-      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/asset -d '{\"configuration\": {\"verify_cert\": true, \"base_url\": \"https://github.com/redcanaryco/atomic-red-team.git\"}, \"name\": \"art_main_repo\", \"product_name\": \"Atomic Red Team\", \"product_vendor\": \"Red Canary\"}'",
-      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/container -d '{\"label\": \"events\", \"name\": \"Example Container\"}'",
-      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/action_run -d '{\"action\": \"test connectivity\", \"container_id[{\"assets\": [\"art_main_repo\"], \"parameters\": [], \"app_id\": 193}]}'",
-      "curl -ku \"admin:$(cat phantom_instance_id.txt)\" https://192.168.38.110/rest/asset -d '{\"name\": \"splunk_dect_lab\", \"product_vendor\": \"Splunk Inc.\", \"product_name\": \"Splunk Enterprise\", \"configuration\": {\"username\": \"admin\", \"max_container\": 100, \"ingest\": {\"container_label\": \"splunk_events\", \"start_time_epoch_utc\": null}, \"retry_count\": \"3\", \"verify_server_cert\": false, \"device\": \"https://192.168.38.105\", \"timezone\": \"UTC\", \"password\": \"changeme\", \"port\": \"8089\"}}'",
       
     ]
 

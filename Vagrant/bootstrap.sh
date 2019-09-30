@@ -175,6 +175,7 @@ install_splunk() {
 
     # AdvSim: Update master layer in ATT&CK Nav
     curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
+    # TODO need to add win10 and DC to attck_assets.csv file
   fi
 }
 
@@ -434,11 +435,12 @@ main() {
   fix_eth1_static_ip
   install_golang
   install_splunk
-  install_fleet
-  download_palantir_osquery_config
-  import_osquery_config_into_fleet
-  install_suricata
-  install_bro
+# Removing extra packages for testing Terraform
+#  install_fleet
+#  download_palantir_osquery_config
+#  import_osquery_config_into_fleet
+#  install_suricata
+#  install_bro
   postinstall_tasks
 }
 
