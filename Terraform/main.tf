@@ -267,7 +267,7 @@ resource "aws_instance" "logger" {
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
-      "sudo curl -ku admin:changeme https://localhost:8089/servicesNS/nobody/phantom/update_phantom_config\\?output_mode\\=json   -d '{\"verify_certs\":\"false\",\"enable_logging\":\"true\",\"config\":[{\"ph-auth-token\":\"'$(cat phantom_token.txt | sed -e \'s/=/%3D/g\' | sed -e \'s/+/%2B/g\' | sed -e \'s/\//%2F/g\')'\",\"server\":\"https://192.168.38.110\",\"custom_name\":\"DectLab Phantom\",\"default\":true,\"user\":\"automation\",\"ph_auth_config_id\":\"k141js0d\",\"proxy\":\"\",\"validate\":true}],\"accepted\":\"true\",\"save\":true}'",
+      "sudo curl -ku admin:changeme https://localhost:8089/servicesNS/nobody/phantom/update_phantom_config\\?output_mode\\=json   -d '{\"verify_certs\":\"false\",\"enable_logging\":\"true\",\"config\":[{\"ph-auth-token\":\"'$(cat phantom_token.txt | sed -e \\'s/=/%3D/g\\' | sed -e \\'s/+/%2B/g\\' | sed -e \\'s/\\//%2F/g\\')'\",\"server\":\"https://192.168.38.110\",\"custom_name\":\"DectLab Phantom\",\"default\":true,\"user\":\"automation\",\"ph_auth_config_id\":\"k141js0d\",\"proxy\":\"\",\"validate\":true}],\"accepted\":\"true\",\"save\":true}'",
       
     ]
 
