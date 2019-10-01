@@ -179,6 +179,7 @@ install_splunk() {
     curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
     # Update ThreatHunting Permissions
     curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/ThreatHunting/acl -d sharing=global -d owner=nobody
+    curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/Splunk_Security_Essentials/acl -d sharing=global -d owner=nobody
   fi
 }
 
