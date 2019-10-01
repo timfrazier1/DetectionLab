@@ -212,7 +212,7 @@ resource "aws_instance" "phantom" {
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"configuration\": {\"verify_cert\": true, \"base_url\": \"https://github.com/redcanaryco/atomic-red-team.git\"}, \"name\": \"art_main_repo\", \"product_name\": \"Atomic Red Team\", \"product_vendor\": \"Red Canary\"}'",
       "sudo curl -ku admin:password https://localhost/rest/container -d '{\"label\": \"events\", \"name\": \"Example Container\"}'",
       "sudo curl -ku admin:password https://localhost/rest/app?_filter_name__contains=\\\"Atomic\\\" | cut -d\":\" -f12 | cut -d\",\" -f1 | cut -d\" \" -f2 > app_id.txt",
-      "sudo curl -ku admin:password https://localhost/rest/action_run -d '{\"action\": \"test connectivity\", \"container_id\": 1, \"name\": \"art_test_connectivity\", \"targets\": [{\"assets\": [\"art_main_repo\"], \"parameters\": [], \"app_id\": $(cat app_id.txt)}]}'",
+      "sudo curl -ku admin:password https://localhost/rest/action_run -d '{\"action\": \"test connectivity\", \"container_id\": 1, \"name\": \"art_test_connectivity\", \"targets\": [{\"assets\": [\"art_main_repo\"], \"parameters\": [], \"app_id\": '$(cat app_id.txt)'}]}'",
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"name\": \"splunk_dect_lab\", \"product_vendor\": \"Splunk Inc.\", \"product_name\": \"Splunk Enterprise\", \"configuration\": {\"username\": \"admin\", \"max_container\": 100, \"ingest\": {\"container_label\": \"splunk_events\", \"start_time_epoch_utc\": null}, \"retry_count\": \"3\", \"verify_server_cert\": false, \"device\": \"https://192.168.38.105\", \"timezone\": \"UTC\", \"password\": \"changeme\", \"port\": \"8089\"}}'",
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"name\": \"winrm_dect_lab\", \"product_name\": \"Windows Remote Management\", \"product_vendor\": \"Microsoft\", \"configuration\": {\"username\": \"vagrant\", \"domain\": \"\", \"endpoint\": \"192.168.38.104\", \"verify_server_cert\": false, \"default_port\": \"5985\", \"default_protocol\": \"http\", \"password\": \"vagrant\", \"transport\": \"ntlm\"}}'",
       "sudo curl -ku admin:password https://localhost/rest/scm/3 -d '{\"pull\": true, \"force\": true}'",
@@ -255,6 +255,8 @@ resource "aws_instance" "logger" {
       "cat phantom_instance_id.txt",
       "curl -ku admin:password https://192.168.38.110/rest/ph_user/2 | cut -d\":\" -f 10 | cut -d'\"' -f 2 > phantom_token.txt",
       "cat phantom_token.txt",
+      "cat phantom_token.txt | sed -e \"s/=/%3D/g\" | sed -e \"s/+/%2B/g\" | sed -e \"s/\\//%2F/g\" > url_phantom_token.txt",
+      "cat url_phantom_token.txt",
       "sudo add-apt-repository universe && sudo apt-get -qq update && sudo apt-get -qq install -y git",
       "echo 'logger' | sudo tee /etc/hostname && sudo hostnamectl set-hostname logger",
       "sudo adduser --disabled-password --gecos \"\" vagrant && echo 'vagrant:vagrant' | sudo chpasswd",
@@ -269,7 +271,7 @@ resource "aws_instance" "logger" {
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
-      "sudo curl -ku admin:changeme https://localhost:8089/servicesNS/nobody/phantom/update_phantom_config\\?output_mode\\=json   -d '{\"verify_certs\":\"false\",\"enable_logging\":\"true\",\"config\":[{\"ph-auth-token\":\"'$(cat phantom_token.txt | sed -e \\'s/=/%3D/g\\' | sed -e \\'s/+/%2B/g\\' | sed -e \\'s/\\//%2F/g\\')'\",\"server\":\"https://192.168.38.110\",\"custom_name\":\"DectLab Phantom\",\"default\":true,\"user\":\"automation\",\"ph_auth_config_id\":\"k141js0d\",\"proxy\":\"\",\"validate\":true}],\"accepted\":\"true\",\"save\":true}'",
+      "sudo curl -ku admin:changeme https://localhost:8089/servicesNS/nobody/phantom/update_phantom_config\\?output_mode\\=json -d '{\"verify_certs\":\"false\",\"enable_logging\":\"true\",\"config\":[{\"ph-auth-token\":\"'$(cat url_phantom_token.txt)'\",\"server\":\"https://192.168.38.110\",\"custom_name\":\"DectLab Phantom\",\"default\":true,\"user\":\"automation\",\"ph_auth_config_id\":\"k141js0d\",\"proxy\":\"\",\"validate\":true}],\"accepted\":\"true\",\"save\":true}'",
       
     ]
 
