@@ -30,3 +30,7 @@ output "splunk_url" {
   value = local.splunk_url
 }
 
+output "phantom_url" {
+  value = local.phantom_url
+}
+
