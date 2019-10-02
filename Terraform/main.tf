@@ -200,10 +200,10 @@ resource "aws_instance" "phantom" {
       "sleep 480",
       "which psql >> output2.txt",
       "sudo psql -d phantom -c 'select key from token where id=1;' | grep = | sed 's/^[[:space:]]*//g' > token.txt",
-      "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\"}'",
+      "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\", \"default_label\": \"advsim_test\"}'",
       "sudo psql -d phantom -c \"update token set allowed_ips = '[\\\"any\\\"]';\"",
       "sudo psql -d phantom -c 'select * from token;' > token_table.txt",
-      "sudo psql -d phantom -c \"insert into scm(branch, disabled, name, read_only, type, uri, version) VALUES ('master', 'f', 'AdvSim', 'f','git','https://github.com/daveherrald/AdvSim.git',1);\"",
+      "sudo psql -d phantom -c \"insert into scm(branch, disabled, name, read_only, type, uri, version) VALUES ('master', 'f', 'AdvSim', 'f','git','https://github.com/timfrazier1/AdvSimPlaybooks.git',1);\"",
       "cat token.txt",
       "sudo git clone https://github.com/timfrazier1/AdversarySimulation.git /opt/AdversarySimulation",
       "sleep 120",
@@ -218,6 +218,7 @@ resource "aws_instance" "phantom" {
       "sudo curl -ku admin:password https://localhost/rest/scm/3 -d '{\"pull\": true, \"force\": true}'",
       "sudo curl -ku admin:password https://localhost/rest/playbook?_filter_name=%22Modular%20Simulation%22 | cut -d\":\" -f 14 | cut -d\",\" -f 1 | cut -d\" \" -f2 > playbook_id.txt",
       "sudo curl -ku admin:password https://localhost/rest/playbook/$(cat playbook_id.txt) -d '{\"active\": true, \"cancel_runs\": true}'",
+      "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\"}'",
     ]
 # Need a WinRM phantom asset also
 
