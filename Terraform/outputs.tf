@@ -34,3 +34,7 @@ output "phantom_url" {
   value = local.phantom_url
 }
 
+output "phantom admin password" {
+  value = local.phantom_instance_id
+}
+
