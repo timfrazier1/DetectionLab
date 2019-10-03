@@ -197,10 +197,8 @@ resource "aws_instance" "phantom" {
     inline = [
       "echo ${aws_instance.phantom.id} > phantom_instance_id.txt",
       "which psql >> output1.txt",
-      "which python >> output_python.txt",
       "sleep 480",
       "which psql >> output2.txt",
-      "which python >> output_python2.txt",
       "sudo psql -d phantom -c 'select key from token where id=1;' | grep = | sed 's/^[[:space:]]*//g' > token.txt",
       "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\", \"default_label\": \"advsim_test\"}'",
       "sudo psql -d phantom -c \"update token set allowed_ips = '[\\\"any\\\"]';\"",
@@ -224,7 +222,6 @@ resource "aws_instance" "phantom" {
       "sudo curl -ku admin:password https://localhost/rest/playbook/$(cat playbook_id.txt) -d '{\"active\": true, \"cancel_runs\": true}'",
       "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\", \"default_label\": \"advsim_test\"}'",
     ]
-# Need a WinRM phantom asset also
 
     connection {
       host        = coalesce(self.public_ip, self.private_ip)
