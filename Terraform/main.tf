@@ -197,8 +197,10 @@ resource "aws_instance" "phantom" {
     inline = [
       "echo ${aws_instance.phantom.id} > phantom_instance_id.txt",
       "which psql >> output1.txt",
+      "which python >> output_python.txt",
       "sleep 480",
       "which psql >> output2.txt",
+      "which python >> output_python2.txt",
       "sudo psql -d phantom -c 'select key from token where id=1;' | grep = | sed 's/^[[:space:]]*//g' > token.txt",
       "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\", \"default_label\": \"advsim_test\"}'",
       "sudo psql -d phantom -c \"update token set allowed_ips = '[\\\"any\\\"]';\"",
@@ -211,14 +213,15 @@ resource "aws_instance" "phantom" {
       "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phwinrm.tgz password",
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"configuration\": {\"verify_cert\": true, \"base_url\": \"https://github.com/redcanaryco/atomic-red-team.git\"}, \"name\": \"art_main_repo\", \"product_name\": \"Atomic Red Team\", \"product_vendor\": \"Red Canary\"}'",
       "sudo curl -ku admin:password https://localhost/rest/container -d '{\"label\": \"events\", \"name\": \"Example Container\"}'",
-      "sudo curl -ku admin:password https://localhost/rest/app?_filter_name__contains=\\\"Atomic\\\" | cut -d\":\" -f12 | cut -d\",\" -f1 | cut -d\" \" -f2 > app_id.txt",
+      "sudo curl -ku admin:password https://localhost/rest/app?_filter_name__contains=%22Atomic%22 | python -c \"import sys,json; print json.load(sys.stdin)['data'][0]['id']\" > app_id.txt",
       "sudo curl -ku admin:password https://localhost/rest/action_run -d '{\"action\": \"test connectivity\", \"container_id\": 1, \"name\": \"art_test_connectivity\", \"targets\": [{\"assets\": [\"art_main_repo\"], \"parameters\": [], \"app_id\": '$(cat app_id.txt)'}]}'",
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"name\": \"splunk_dect_lab\", \"product_vendor\": \"Splunk Inc.\", \"product_name\": \"Splunk Enterprise\", \"configuration\": {\"username\": \"admin\", \"max_container\": 100, \"ingest\": {\"container_label\": \"splunk_events\", \"start_time_epoch_utc\": null}, \"retry_count\": \"3\", \"verify_server_cert\": false, \"device\": \"https://192.168.38.105\", \"timezone\": \"UTC\", \"password\": \"changeme\", \"port\": \"8089\"}}'",
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"name\": \"winrm_dect_lab\", \"product_name\": \"Windows Remote Management\", \"product_vendor\": \"Microsoft\", \"configuration\": {\"username\": \"vagrant\", \"domain\": \"\", \"endpoint\": \"192.168.38.104\", \"verify_server_cert\": false, \"default_port\": \"5985\", \"default_protocol\": \"http\", \"password\": \"vagrant\", \"transport\": \"ntlm\"}}'",
-      "sudo curl -ku admin:password https://localhost/rest/scm/3 -d '{\"pull\": true, \"force\": true}'",
-      "sudo curl -ku admin:password https://localhost/rest/playbook?_filter_name=%22Modular%20Simulation%22 | cut -d\":\" -f 14 | cut -d\",\" -f 1 | cut -d\" \" -f2 > playbook_id.txt",
+      "sudo curl -ku admin:password https://localhost/rest/scm?_filter_name=%22AdvSim%22 | python -c \"import sys,json; print json.load(sys.stdin)['data'][0]['id']\" > repo_id.txt",
+      "sudo curl -ku admin:password https://localhost/rest/scm/$(cat repo_id.txt) -d '{\"pull\": true, \"force\": true}'",
+      "sudo curl -ku admin:password https://localhost/rest/playbook?_filter_name=%22Modular%20Simulation%22 | python -c \"import sys,json; print json.load(sys.stdin)['data'][0]['id']\" > playbook_id.txt",
       "sudo curl -ku admin:password https://localhost/rest/playbook/$(cat playbook_id.txt) -d '{\"active\": true, \"cancel_runs\": true}'",
-      "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\"}'",
+      "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\", \"default_label\": \"advsim_test\"}'",
     ]
 # Need a WinRM phantom asset also
 
