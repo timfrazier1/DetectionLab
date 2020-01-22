@@ -52,7 +52,7 @@ data "aws_ami" "phantom_ami" {
 
   filter {
     name   = "name"
-    values = ["Splunk Phantom 4.5 Patch 2-80ad187b-5f54-4327-9047-fb6fb36e7019-ami-0bcb484c53aba9932.4"]
+    values = ["Splunk Phantom 4.6 GA-80ad187b-5f54-4327-9047-fb6fb36e7019-ami-05abb18a2126b3c12.4"]
   }
 }
 
@@ -62,7 +62,7 @@ data "aws_ami" "logger_ami" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20180912"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-20191113"]
   }
 }
 

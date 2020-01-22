@@ -38,3 +38,6 @@ output "phantom_admin_password" {
   value = local.phantom_instance_id
 }
 
+output "guacamole_url" {
+  value = local.guacamole_url
+}
