@@ -72,6 +72,20 @@ resource "aws_security_group" "logger" {
     cidr_blocks = var.ip_whitelist
   }
 
+  # Guacamole access
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = var.ip_whitelist
+  }
+  ingress {
+    from_port   = 8443
+    to_port     = 8443
+    protocol    = "tcp"
+    cidr_blocks = var.ip_whitelist
+  }
+
   # Allow all traffic from the private subnet
   ingress {
     from_port   = 0
@@ -259,7 +273,7 @@ resource "aws_instance" "logger" {
       "cat phantom_token.txt",
       "cat phantom_token.txt | sed -e \"s/=/%3D/g\" | sed -e \"s/+/%2B/g\" | sed -e \"s/\\//%2F/g\" > url_phantom_token.txt",
       "cat url_phantom_token.txt",
-      "sudo add-apt-repository universe && sudo apt-get -qq update && sudo apt-get -qq install -y git",
+      "sudo apt-get -qq update && sudo apt-get -qq install -y git",
       "echo 'logger' | sudo tee /etc/hostname && sudo hostnamectl set-hostname logger",
       "sudo adduser --disabled-password --gecos \"\" vagrant && echo 'vagrant:vagrant' | sudo chpasswd",
       "sudo mkdir /home/vagrant/.ssh && sudo cp /home/ubuntu/.ssh/authorized_keys /home/vagrant/.ssh/authorized_keys && sudo chown -R vagrant:vagrant /home/vagrant/.ssh",
@@ -268,8 +282,9 @@ resource "aws_instance" "logger" {
       "sudo git clone https://github.com/timfrazier1/DetectionLab.git /opt/DetectionLab",
       "sudo sed -i 's/eth1/eth0/g' /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo sed -i 's/ETH1/ETH0/g' /opt/DetectionLab/Vagrant/bootstrap.sh",
-      "sudo sed -i 's#/usr/local/go/bin/go get -u#GOPATH=/root/go /usr/local/go/bin/go get -u#g' /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo sed -i 's#/vagrant/resources#/opt/DetectionLab/Vagrant/resources#g' /opt/DetectionLab/Vagrant/bootstrap.sh",
+      "sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config",
+      "sudo service ssh restart",
       "sudo chmod +x /opt/DetectionLab/Vagrant/bootstrap.sh",
       "sudo apt-get -qq update",
       "sudo /opt/DetectionLab/Vagrant/bootstrap.sh",
@@ -295,6 +310,21 @@ resource "aws_instance" "logger" {
 resource "aws_instance" "dc" {
   instance_type = "t2.medium"
 
+  provisioner "remote-exec" {
+    inline = [
+      "choco install -force -y winpcap",
+      "powershell -c \"$ifindex = get-netipinterface | where-object InterfaceAlias -eq 'Ethernet' | where-object AddressFamily -eq 2 | select-object -ExpandProperty ifIndex; set-dnsclientserveraddress -InterfaceIndex $ifindex\"",
+      "ipconfig /all"
+      ]
+
+    connection {
+      type     = "winrm"
+      user     = "vagrant"
+      password = "vagrant"
+      host     = coalesce(self.public_ip, self.private_ip)
+    }
+  }
+
   # Uses the local variable if external data source resolution fails
   ami = coalesce(var.dc_ami, data.aws_ami.dc_ami.image_id)
 
@@ -314,6 +344,21 @@ resource "aws_instance" "dc" {
 resource "aws_instance" "wef" {
   instance_type = "t2.medium"
 
+  provisioner "remote-exec" {
+    inline = [
+      "choco install -force -y winpcap",
+      "cscript c:\\windows\\system32\\slmgr.vbs -rearm",
+      "shutdown -r",
+    ]
+
+    connection {
+      type     = "winrm"
+      user     = "vagrant"
+      password = "vagrant"
+      host     = coalesce(self.public_ip, self.private_ip)
+    }
+  }
+
   # Uses the local variable if external data source resolution fails
   ami = coalesce(var.wef_ami, data.aws_ami.wef_ami.image_id)
 
@@ -332,6 +377,17 @@ resource "aws_instance" "wef" {
 
 resource "aws_instance" "win10" {
   instance_type = "t2.medium"
+
+  provisioner "remote-exec" {
+    inline = ["choco install -force -y winpcap"]
+
+    connection {
+      type     = "winrm"
+      user     = "vagrant"
+      password = "vagrant"
+      host     = coalesce(self.public_ip, self.private_ip)
+    }
+  }
 
   # Uses the local variable if external data source resolution fails
   ami = coalesce(var.win10_ami, data.aws_ami.win10_ami.image_id)

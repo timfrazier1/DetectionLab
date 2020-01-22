@@ -4,7 +4,7 @@ DetectionLab is tested weekly on Saturdays via a scheduled CircleCI workflow to 
 
 [![CircleCI](https://circleci.com/gh/clong/DetectionLab/tree/master.svg?style=shield)](https://circleci.com/gh/clong/DetectionLab/tree/master)
 [![license](https://img.shields.io/github/license/clong/DetectionLab.svg?style=flat-square)](https://github.com/clong/DetectionLab/blob/master/license.md)
-![Maintenance](https://img.shields.io/maintenance/yes/2019.svg?style=flat-square)
+![Maintenance](https://img.shields.io/maintenance/yes/2020.svg?style=flat-square)
 [![GitHub last commit](https://img.shields.io/github/last-commit/clong/DetectionLab.svg?style=flat-square)](https://github.com/clong/DetectionLab/commit/master)
 [![Twitter](https://img.shields.io/twitter/follow/DetectionLab.svg?style=social)](https://twitter.com/DetectionLab)
 
@@ -12,11 +12,9 @@ DetectionLab is tested weekly on Saturdays via a scheduled CircleCI workflow to 
 
 All of the infrastructure, building, and testing of DetectionLab is currently funded by myself in my spare time. If you find this project useful, feel free to buy me a coffee using one of the buttons below!
 
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](paypal.me/clong0)
+[![GitHub Sponsor](https://img.shields.io/badge/GitHub-Sponsor-red.svg)](https://github.com/sponsors/clong)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/paypalme2/clong0)
 [![Donate](https://img.shields.io/badge/Donate-Crypto-blue.svg)](https://commerce.coinbase.com/checkout/838ac7a2-7b9d-4d40-b475-fd1015fdaacd)
-[![Donate](https://img.shields.io/badge/Donate-GoFundMe-red.svg)](https://www.gofundme.com/detectionlab-platform-support)
-
-Additionally, A [GoFundMe](https://www.gofundme.com/detectionlab-platform-support) has been generously started by [@BlueTeamHB](https://twitter.com/BlueTeamHB) to support development of DetectionLab. Thank you so much to everyone who has made a donation!
 
 ## Purpose
 This lab has been designed with defenders in mind. Its primary purpose is to allow the user to quickly build a Windows domain that comes pre-loaded with security tooling and some best practices when it comes to system logging configurations. It can easily be modified to fit most needs or expanded to include additional hosts.
@@ -47,16 +45,10 @@ NOTE: This lab has not been hardened in any way and runs with default vagrant cr
 ---
 
 ## Quickstart
-DetectionLab now contains build scripts for \*NIX, MacOS, and Windows users!
-
-There is a single build script that supports 3 different options:
-- `./build.sh <virtualbox|vmware_desktop>` - Builds the entire lab from scratch. Takes 3-5 hours depending on hardware resources and bandwidth
-- `./build.sh <virtualbox|vmware_desktop> --vagrant-only` - Downloads pre-built Packer boxes from Vagrant Cloud and builds the lab from those boxes. This option is recommended if you have more bandwidth than time or are having trouble building boxes.
-- `./build.sh <virtualbox|vmware_desktop> --packer-only` - This option only builds the Packer boxes and will not use Vagrant to start up the lab.
-
-Windows users will want to use the following script:
-- `./build.ps1 -ProviderName <virtualbox|vmware_desktop>` - Builds the entire lab from scratch. Takes 3-5 hours depending on hardware resources and bandwidth
-- `./build.ps1 -ProviderName <virtualbox|vmware_desktop> -VagrantOnly` - Downloads pre-built Packer boxes from Vagrant Cloud and builds the lab from those boxes. This option is recommended if you have more bandwidth than time or are having trouble building boxes.
+* [AWS](https://github.com/clong/DetectionLab/wiki/Quickstart---AWS-(Terraform))
+* [MacOS](https://github.com/clong/DetectionLab/wiki/Quickstart---MacOS)
+* [Windows](https://github.com/clong/DetectionLab/wiki/Quickstart---Windows)
+* [Linux](https://github.com/clong/DetectionLab/wiki/Quickstart-Linux)
 
 ---
 
@@ -111,134 +103,20 @@ $ packer build --only=[vmware|virtualbox]-iso windows_2016.json
 ---
 
 ## Basic Vagrant Usage
-Vagrant commands must be run from the "Vagrant" folder.
 
-* Bring up all Detection Lab hosts: `vagrant up` (optional `--provider=[virtualbox|vmware_desktop]`)
-* Bring up a specific host: `vagrant up <hostname>`
-* Restart a specific host: `vagrant reload <hostname>`
-* Restart a specific host and re-run the provision process: `vagrant reload <hostname> --provision`
-* Destroy a specific host `vagrant destroy <hostname>`
-* Destroy the entire Detection Lab environment: `vagrant destroy` (Adding `-f` forces it without a prompt)
-* SSH into a host (only works with Logger): `vagrant ssh logger`
-* Check the status of each host: `vagrant status`
-* Suspend the lab environment: `vagrant suspend`
-* Resume the lab environment: `vagrant resume`
+Moved to the wiki: [Basic Vagrant Usage](https://github.com/clong/DetectionLab/wiki/Vagrant-Usage)
 
 ---
 
 ## Lab Information
-* Domain Name: windomain.local
-* Admininstrator login: vagrant:vagrant
-* Fleet login: https://192.168.38.105:8412 - admin:admin123#
-* Splunk login: https://192.168.38.105:8000 - admin:changeme
-* MS ATA login: https://192.168.38.103 - wef\vagrant:vagrant
 
-## Lab Hosts
-* DC - Windows 2016 Domain Controller
-  * WEF Server Configuration GPO
-  * Powershell logging GPO
-  * Enhanced Windows Auditing policy GPO
-  * Sysmon
-  * osquery
-  * Splunk Universal Forwarder (Forwards Sysmon & osquery)
-  * Sysinternals Tools
-  * Microsft Advanced Threat Analytics Lightweight Gateway
-* WEF - Windows 2016 Server
-  * Microsoft Advanced Threat Analytics
-  * Windows Event Collector
-  * Windows Event Subscription Creation
-  * Powershell transcription logging share
-  * Sysmon
-  * osquery
-  * Splunk Universal Forwarder (Forwards WinEventLog & Powershell & Sysmon & osquery)
-  * Sysinternals tools
-* Win10 - Windows 10 Workstation
-  * Simulates employee workstation
-  * Sysmon
-  * osquery
-  * Splunk Universal Forwarder (Forwards Sysmon & osquery)
-  * Sysinternals Tools
-* Logger - Ubuntu 16.04
-  * Splunk Enterprise
-  * Fleet osquery Manager
-  * Bro
-  * Suricata
-
-## Splunk Indexes
-Index Name | Description
------------|------------
-osquery | osquery/Fleet result logs
-osquery-status | osquery/fleet INFO/WARN/ERROR logs
-powershell | Powershell transcription logs
-sysmon | Logs from the Sysmon service
-wineventlog | Windows Event Logs
-bro | Bro network traffic logs
-suricata | Suricata IDS logs
-threathunting | Used for the ThreatHunting app
-
-## Installed Tools on Windows
-  * Sysmon
-  * osquery
-  * AutorunsToWinEventLog
-  * Process Monitor
-  * Process Explorer
-  * PsExec
-  * TCPView
-  * Notepad++
-  * Google Chrome
-  * WinRar
-  * Mimikatz
-  * Wireshark
-  * Powersploit
-  * Atomic Red Team
-
-## Applied GPOs
-* [Custom Event Channel Permissions](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Custom%20Event%20Channel%20Permissions.htm)
-* [Default Domain Controllers Policy](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Default%20Domain%20Controllers%20Policy.htm)
-* [Default Domain Policy](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Default%20Domain%20Policy.htm)
-* [Domain Controllers Enhanced Auditing Policy](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Domain%20Controllers%20Enhanced%20Auditing%20Policy.htm)
-* [Powershell Logging](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Powershell%20Logging.htm)
-* [Servers Enhanced Auditing Policy](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Servers%20Enhanced%20Auditing%20Policy.htm)
-* [Windows Event Forwarding Server](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Windows%20Event%20Forwarding%20Server.htm)
-* [Workstations Enhanced Auditing Policy](https://rawgit.com/clong/DetectionLab/master/Vagrant/resources/GPO/reports/Workstations%20Enhanced%20Auditing%20Policy.htm)
+Moved to the wiki: [Lab Information & Credentials](https://github.com/clong/DetectionLab/wiki/Lab-Information-&-Credentials)
 
 ---
 
 ## Known Issues and Workarounds
 
-**Issue:** Vagrant reports: `Message: HTTPClient::KeepAliveDisconnected:` while provisioning.                     
-**Workaround:** Run `$ vagrant reload <hostname> --provision`
-
----
-
-**Issue:** `Vagrant timed out while attempting to connect via WinRM` after Win10 host joins the domain.                        
-**Workaround** Documented in [#21](https://github.com/clong/detectionlab/issues/21). Just run `$ vagrant reload win10 --provision`
-
----
-
-**Issue:** Vagrant is unable to forward a port for you   
-**Workaround:** Documented in [#11](https://github.com/clong/detectionlab/issues/11). There are a few possibilities:
-1. Try a `vagrant reload <hostname> --provision`. For whatever reason `vagrant up` doesn't fix conflicts but reload does.
-2. Check if something is legitimately occupying the port via `sudo lsof -n -iTCP:<port_number>`
-3. Follow the instructions from this comment: https://github.com/hashicorp/vagrant/issues/8130#issuecomment-272963103
-
----
-
-**Issue:** Fleet server becomes unreachable after VM is suspended and resumed
-
-**Workaround:** Documented in [#22](https://github.com/clong/detectionlab/issues/22). The following commands should make it reachable without deleting data:
-```
-$ docker stop $(docker ps -aq)
-$ service docker restart
-$ cd /home/vagrant/kolide-quickstart
-$ docker-compose start -d
-```
-
----
-
-**Issue:** Your primary hard drive doesn't have enough space for DetectionLab
-
-**Workaround:** Documented in [#48](https://github.com/clong/detectionlab/issues/48). You can change the default location for Vagrant by using the [VAGRANT_HOME](https://www.vagrantup.com/docs/other/environmental-variables.html#vagrant_home) environment variable.
+Moved to the wiki: [Known Issues and Workarounds](https://github.com/clong/DetectionLab/wiki/Known-Issues-and-Workarounds)
 
 ---
 
