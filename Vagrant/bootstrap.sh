@@ -111,6 +111,7 @@ install_splunk() {
     # AdvSim: Hardcoding Splunk version to work with AdvSim
     echo "[$(date +%H:%M:%S)]: Downloading Splunk version 7.3.1.1"
 
+    mkdir splunk
     wget --progress=bar:force -O splunk/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb 'https://www.splunk.com/page/download_track?file=7.3.1.1/linux/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb&ac=&wget=true&name=wget&platform=Linux&architecture=x86_64&version=7.3.1.1&product=splunk&typed=release'
 
     dpkg -i splunk/*.deb
