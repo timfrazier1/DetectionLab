@@ -92,36 +92,28 @@ install_splunk() {
     dig @8.8.8.8 splunk.com > /dev/null
 
     # Try to resolve the latest version of Splunk by parsing the HTML on the downloads page
-    #echo "[$(date +%H:%M:%S)]: Attempting to autoresolve the latest version of Splunk..."
-    #LATEST_SPLUNK=$(curl https://www.splunk.com/en_us/download/splunk-enterprise.html | grep -i deb | grep -Eo "data-link=\"................................................................................................................................" | cut -d '"' -f 2)
+    echo "[$(date +%H:%M:%S)]: Attempting to autoresolve the latest version of Splunk..."
+    LATEST_SPLUNK=$(curl https://www.splunk.com/en_us/download/splunk-enterprise.html | grep -i deb | grep -Eo "data-link=\"................................................................................................................................" | cut -d '"' -f 2)
     # Sanity check what was returned from the auto-parse attempt
+    
     # AdvSim: Commenting this to hardcode the version for AdvSim
     #if [[ "$(echo $LATEST_SPLUNK | grep -c "^https:")" -eq 1 ]] && [[ "$(echo $LATEST_SPLUNK | grep -c "\.deb$")" -eq 1 ]]; then
     #  echo "[$(date +%H:%M:%S)]: The URL to the latest Splunk version was automatically resolved as: $LATEST_SPLUNK"
     #  echo "[$(date +%H:%M:%S)]: Attempting to download..."
-    #  wget --progress=bar:force -P splunk/ "$LATEST_SPLUNK"
+    #  wget --progress=bar:force -P /opt "$LATEST_SPLUNK"
     #else
     #  echo "[$(date +%H:%M:%S)]: Unable to auto-resolve the latest Splunk version. Falling back to hardcoded URL..."
-      # Download Hardcoded Splunk
-      #wget --progress=bar:force -O splunk/splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb 'https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=7.2.6&product=splunk&filename=splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb&wget=true'
+    #  # Download Hardcoded Splunk
+    #  wget --progress=bar:force -O splunk/splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb 'https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=7.2.6&product=splunk&filename=splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb&wget=true'
     #fi
+    #dpkg -i /opt/splunk*.deb
     
     # AdvSim: Hardcoding Splunk version to work with AdvSim
-    #echo "[$(date +%H:%M:%S)]: Downloading Splunk version 7.3.1.1"
+    echo "[$(date +%H:%M:%S)]: Downloading Splunk version 7.3.1.1"
 
-    #wget --progress=bar:force -O splunk/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb 'https://www.splunk.com/page/download_track?file=7.3.1.1/linux/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb&ac=&wget=true&name=wget&platform=Linux&architecture=x86_64&version=7.3.1.1&product=splunk&typed=release'
+    wget --progress=bar:force -O splunk/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb 'https://www.splunk.com/page/download_track?file=7.3.1.1/linux/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb&ac=&wget=true&name=wget&platform=Linux&architecture=x86_64&version=7.3.1.1&product=splunk&typed=release'
 
-    #dpkg -i splunk/*.deb
-    if [[ "$(echo $LATEST_SPLUNK | grep -c "^https:")" -eq 1 ]] && [[ "$(echo $LATEST_SPLUNK | grep -c "\.deb$")" -eq 1 ]]; then
-      echo "[$(date +%H:%M:%S)]: The URL to the latest Splunk version was automatically resolved as: $LATEST_SPLUNK"
-      echo "[$(date +%H:%M:%S)]: Attempting to download..."
-      wget --progress=bar:force -P /opt "$LATEST_SPLUNK"
-    else
-      echo "[$(date +%H:%M:%S)]: Unable to auto-resolve the latest Splunk version. Falling back to hardcoded URL..."
-      # Download Hardcoded Splunk
-      wget --progress=bar:force -O splunk/splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb 'https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=7.2.6&product=splunk&filename=splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb&wget=true'
-    fi
-    dpkg -i /opt/splunk*.deb
+    dpkg -i splunk/*.deb
     /opt/splunk/bin/splunk start --accept-license --answer-yes --no-prompt --seed-passwd changeme
     /opt/splunk/bin/splunk add index wineventlog -auth 'admin:changeme'
     /opt/splunk/bin/splunk add index osquery -auth 'admin:changeme'
@@ -146,7 +138,7 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz  -auth 'admin:changeme'
     # AdvSim apps
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/add-on-for-microsoft-sysmon_810.tgz -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_275.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_305.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-remote-search_109.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-app-for-phantom-reporting_100.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/base64_11.tgz -auth 'admin:changeme'

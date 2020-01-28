@@ -223,6 +223,7 @@ resource "aws_instance" "phantom" {
       "sleep 120",
       "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phatomicredteam.tgz password",
       "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phwinrm.tgz password",
+      "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/scythe.tgz password",
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"configuration\": {\"verify_cert\": true, \"base_url\": \"https://github.com/redcanaryco/atomic-red-team.git\"}, \"name\": \"art_main_repo\", \"product_name\": \"Atomic Red Team\", \"product_vendor\": \"Red Canary\"}'",
       "sudo curl -ku admin:password https://localhost/rest/container -d '{\"label\": \"events\", \"name\": \"Example Container\"}'",
       "sudo curl -ku admin:password https://localhost/rest/app?_filter_name__contains=%22Atomic%22 | python -c \"import sys,json; print json.load(sys.stdin)['data'][0]['id']\" > app_id.txt",
