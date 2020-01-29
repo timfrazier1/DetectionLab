@@ -382,7 +382,7 @@ resource "aws_instance" "win10" {
   provisioner "remote-exec" {
     inline = [
         "choco install -force -y winpcap",
-        "powershell -c \"script_str = IEX (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/execution-frameworks/Invoke-AtomicRedTeam/install-atomicredteam.ps1'); Install-AtomicRedTeam -verbose\"",
+        "powershell -c \"IEX (New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/redcanaryco/atomic-red-team/master/execution-frameworks/Invoke-AtomicRedTeam/install-atomicredteam.ps1'); Install-AtomicRedTeam -verbose\"",
         "powershell -c \"Install-Module -Name powershell-yaml -Scope CurrentUser -Force\"",
     ]
 
