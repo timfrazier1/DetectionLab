@@ -198,7 +198,7 @@ resource "aws_instance" "phantom" {
   ami           = coalesce(var.phantom_ami, data.aws_ami.phantom_ami.image_id)
 
   tags = {
-    Name = "Phantom 4.5"
+    Name = "Phantom 4.6"
   }
 #  ami = "ami-081754fc6dc359927"
 
