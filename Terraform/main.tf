@@ -223,7 +223,7 @@ resource "aws_instance" "phantom" {
       "sleep 120",
       "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phatomicredteam.tgz password",
       "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phwinrm.tgz password",
-      "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/scythe.tgz password",
+      "sudo python /opt/AdversarySimulation/resources/install_phantom_app.py /opt/AdversarySimulation/resources/phantom_apps/phscythe.tgz password",
       "sudo curl -ku admin:password https://localhost/rest/asset -d '{\"configuration\": {\"verify_cert\": true, \"base_url\": \"https://github.com/redcanaryco/atomic-red-team.git\"}, \"name\": \"art_main_repo\", \"product_name\": \"Atomic Red Team\", \"product_vendor\": \"Red Canary\"}'",
       "sudo curl -ku admin:password https://localhost/rest/container -d '{\"label\": \"events\", \"name\": \"Example Container\"}'",
       "sudo curl -ku admin:password https://localhost/rest/app?_filter_name__contains=%22Atomic%22 | python -c \"import sys,json; print json.load(sys.stdin)['data'][0]['id']\" > app_id.txt",
@@ -236,6 +236,9 @@ resource "aws_instance" "phantom" {
       "sudo curl -ku admin:password https://localhost/rest/playbook?_filter_name=%22Modular%20Simulation%22 | python -c \"import sys,json; print json.load(sys.stdin)['data'][0]['id']\" > playbook_id.txt",
       "sudo curl -ku admin:password https://localhost/rest/playbook/$(cat playbook_id.txt) -d '{\"active\": true, \"cancel_runs\": true}'",
       "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\", \"default_label\": \"advsim_test\"}'",
+      "sudo sed -i 's/GSSAPIAuthentication yes/GSSAPIAuthentication no/g' /etc/ssh/sshd_config",
+      "echo 'UseDns no' | sudo tee -a /etc/ssh/sshd_config",
+      "sudo /sbin/service sshd restart",
     ]
 
     connection {
