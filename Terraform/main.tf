@@ -237,7 +237,7 @@ resource "aws_instance" "phantom" {
       "sudo curl -ku admin:password https://localhost/rest/playbook/$(cat playbook_id.txt) -d '{\"active\": true, \"cancel_runs\": true}'",
       "sudo curl -ku admin:password https://localhost/rest/ph_user/2 -d '{\"first_name\":\"'$(cat token.txt)'\", \"default_label\": \"advsim_test\"}'",
       "sudo sed -i 's/GSSAPIAuthentication yes/GSSAPIAuthentication no/g' /etc/ssh/sshd_config",
-      "echo 'UseDns no' | sudo tee -a /etc/ssh/sshd_config",
+      "sudo bash -c \"echo 'UseDns no' >> /etc/ssh/sshd_config\"",
       "sudo /sbin/service sshd restart",
     ]
 
