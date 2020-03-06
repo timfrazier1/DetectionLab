@@ -211,6 +211,8 @@ resource "aws_instance" "phantom" {
     inline = [
       "echo ${aws_instance.phantom.id} > phantom_instance_id.txt",
       "sleep 480",
+      "which psql",
+      "sudo psql -d phantom -c \"insert into scm(branch, disabled, name, read_only, type, uri, version) VALUES ('master', 'f', 'AdvSim', 'f','git','https://github.com/timfrazier1/AdvSimPlaybooks.git',1);\"",
       "sudo git clone https://github.com/timfrazier1/AdversarySimulation.git /opt/AdversarySimulation",
       "sleep 120",
       "python /opt/AdversarySimulation/resources/setup_phantom.py",
