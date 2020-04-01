@@ -1,6 +1,7 @@
 # Purpose: Installs chocolatey package manager, then installs custom utilities from Choco.
 
 If (-not (Test-Path "C:\ProgramData\chocolatey")) {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   Write-Host "Installing Chocolatey"
   iex ((new-object net.webclient).DownloadString('https://chocolatey.org/install.ps1'))
 } else {
@@ -13,8 +14,6 @@ If ($(hostname) -eq "win10") {
   choco install -y --limit-output --no-progress classic-shell -installArgs ADDLOCAL=ClassicStartMenu
   & "C:\Program Files\Classic Shell\ClassicStartMenu.exe" "-xml" "c:\vagrant\resources\windows\MenuSettings.xml"
 }
-choco install -y --limit-output --no-progress NotepadPlusPlus
-choco install -y --limit-output --no-progress GoogleChrome
-choco install -y --limit-output --no-progress WinRar
+choco install -y --limit-output --no-progress NotepadPlusPlus GoogleChrome WinRar
 
 Write-Host "Utilties installation complete!"

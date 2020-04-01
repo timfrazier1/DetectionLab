@@ -1,8 +1,8 @@
 #! /bin/bash
 
 export DEBIAN_FRONTEND=noninteractive
-echo "apt-fast apt-fast/maxdownloads string 10" | debconf-set-selections;
-echo "apt-fast apt-fast/dlflag boolean true" | debconf-set-selections;
+echo "apt-fast apt-fast/maxdownloads string 10" | debconf-set-selections
+echo "apt-fast apt-fast/dlflag boolean true" | debconf-set-selections
 
 sed -i "2ideb mirror://mirrors.ubuntu.com/mirrors.txt bionic main restricted universe multiverse\ndeb mirror://mirrors.ubuntu.com/mirrors.txt bionic-updates main restricted universe multiverse\ndeb mirror://mirrors.ubuntu.com/mirrors.txt bionic-backports main restricted universe multiverse\ndeb mirror://mirrors.ubuntu.com/mirrors.txt bionic-security main restricted universe multiverse" /etc/apt/sources.list
 
@@ -12,7 +12,7 @@ apt_install_prerequisites() {
   add-apt-repository -y ppa:apt-fast/stable
   # Add repository for yq
   add-apt-repository -y ppa:rmescandon/yq
-　# Add repository for suricata
+  # Add repository for suricata
   add-apt-repository -y ppa:oisf/suricata-stable
   # Install prerequisites and useful tools
   echo "[$(date +%H:%M:%S)]: Running apt-get clean..."
@@ -37,15 +37,14 @@ modify_motd() {
 }
 
 test_prerequisites() {
-  for package in jq whois build-essential git docker docker-compose unzip yq
-  do
+  for package in jq whois build-essential git docker docker-compose unzip yq; do
     echo "[$(date +%H:%M:%S)]: [TEST] Validating that $package is correctly installed..."
     # Loop through each package using dpkg
-    if ! dpkg -S $package > /dev/null; then
+    if ! dpkg -S $package >/dev/null; then
       # If which returns a non-zero return code, try to re-install the package
       echo "[-] $package was not found. Attempting to reinstall."
       apt-get -qq update && apt-get install -y $package
-      if ! which $package > /dev/null; then
+      if ! which $package >/dev/null; then
         # If the reinstall fails, give up
         echo "[X] Unable to install $package even after a retry. Exiting."
         exit 1
@@ -57,12 +56,23 @@ test_prerequisites() {
 }
 
 fix_eth1_static_ip() {
+  USING_KVM=$(sudo lsmod | grep kvm)
+  if [ ! -z "$USING_KVM" ]; then
+    echo "[*] Using KVM, no need to fix DHCP for eth1 iface"
+    return 0
+  fi
+  if [ -f /sys/class/net/eth2/address ]; then
+    if [ "$(cat /sys/class/net/eth2/address)" == "00:50:56:a3:b1:c4" ]; then
+      echo "[*] Using ESXi, no need to change anything"
+      return 0
+    fi
+  fi
   # There's a fun issue where dhclient keeps messing with eth1 despite the fact
   # that eth1 has a static IP set. We workaround this by setting a static DHCP lease.
   echo -e 'interface "eth1" {
     send host-name = gethostname();
     send dhcp-requested-address 192.168.38.105;
-  }' >> /etc/dhcp/dhclient.conf
+  }' >>/etc/dhcp/dhclient.conf
   netplan apply
   # Fix eth1 if the IP isn't set correctly
   ETH1_IP=$(ip -4 addr show eth1 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
@@ -79,6 +89,12 @@ fix_eth1_static_ip() {
       exit 1
     fi
   fi
+
+  # Make sure we do have a DNS resolution
+  while true; do
+    if [ "$(dig +short @8.8.8.8 github.com)" ]; then break; fi
+    sleep 1
+  done
 }
 
 install_splunk() {
@@ -88,8 +104,9 @@ install_splunk() {
   else
     echo "[$(date +%H:%M:%S)]: Installing Splunk..."
     # Get download.splunk.com into the DNS cache. Sometimes resolution randomly fails during wget below
-    dig @8.8.8.8 download.splunk.com > /dev/null
-    dig @8.8.8.8 splunk.com > /dev/null
+    dig @8.8.8.8 download.splunk.com >/dev/null
+    dig @8.8.8.8 splunk.com >/dev/null
+    dig @8.8.8.8 www.splunk.com >/dev/null
 
     # Try to resolve the latest version of Splunk by parsing the HTML on the downloads page
     echo "[$(date +%H:%M:%S)]: Attempting to autoresolve the latest version of Splunk..."
@@ -109,12 +126,22 @@ install_splunk() {
     #dpkg -i /opt/splunk*.deb
     
     # AdvSim: Hardcoding Splunk version to work with AdvSim
-    echo "[$(date +%H:%M:%S)]: Downloading Splunk version 7.3.1.1"
+    # echo "[$(date +%H:%M:%S)]: Downloading Splunk version 7.3.1.1"
 
-    mkdir splunk
-    wget --progress=bar:force -O splunk/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb 'https://www.splunk.com/page/download_track?file=7.3.1.1/linux/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb&ac=&wget=true&name=wget&platform=Linux&architecture=x86_64&version=7.3.1.1&product=splunk&typed=release'
+    # mkdir splunk
+    # wget --progress=bar:force -O splunk/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb 'https://www.splunk.com/page/download_track?file=7.3.1.1/linux/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb&ac=&wget=true&name=wget&platform=Linux&architecture=x86_64&version=7.3.1.1&product=splunk&typed=release'
 
-    dpkg -i splunk/*.deb
+    #dpkg -i splunk/*.deb
+    if [[ "$(echo $LATEST_SPLUNK | grep -c "^https:")" -eq 1 ]] && [[ "$(echo $LATEST_SPLUNK | grep -c "\.deb$")" -eq 1 ]]; then
+      echo "[$(date +%H:%M:%S)]: The URL to the latest Splunk version was automatically resolved as: $LATEST_SPLUNK"
+      echo "[$(date +%H:%M:%S)]: Attempting to download..."
+      wget --progress=bar:force -P /opt "$LATEST_SPLUNK"
+    else
+      echo "[$(date +%H:%M:%S)]: Unable to auto-resolve the latest Splunk version. Falling back to hardcoded URL..."
+      # Download Hardcoded Splunk
+      wget --progress=bar:force -O /opt/splunk-8.0.2-a7f645ddaf91-linux-2.6-amd64.deb 'https://download.splunk.com/products/splunk/releases/8.0.2/linux/splunk-8.0.2-a7f645ddaf91-linux-2.6-amd64.deb&wget=true'
+    fi
+    dpkg -i /opt/splunk*.deb
     /opt/splunk/bin/splunk start --accept-license --answer-yes --no-prompt --seed-passwd changeme
     /opt/splunk/bin/splunk add index wineventlog -auth 'admin:changeme'
     /opt/splunk/bin/splunk add index osquery -auth 'admin:changeme'
@@ -124,14 +151,13 @@ install_splunk() {
     /opt/splunk/bin/splunk add index zeek -auth 'admin:changeme'
     /opt/splunk/bin/splunk add index suricata -auth 'admin:changeme'
     /opt/splunk/bin/splunk add index threathunting -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_forwarder/splunk-add-on-for-microsoft-windows_500.tgz -auth 'admin:changeme'
-    # Using 8.10 below /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/add-on-for-microsoft-sysmon_800.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_forwarder/splunk-add-on-for-microsoft-windows_700.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/add-on-for-microsoft-sysmon_1062.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/asn-lookup-generator_101.tgz -auth 'admin:changeme'
-    # Using 3.3.2 below /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/lookup-file-editor_331.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-zeek-aka-bro_400.tgz -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz  -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz  -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz  -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/link-analysis-app-for-splunk_161.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/threathunting_141.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz  -auth 'admin:changeme'
@@ -154,51 +180,6 @@ install_splunk() {
     cp /opt/AdversarySimulation/resources/dect_lab_attck_assets.csv ./SA-attck_nav/lookups/attck_assets.csv
     cd -
 
-    # Uncomment the following block to install BOTSv2 
-    # Thanks to @MHaggis for this addition!
-    # It is recommended to only uncomment the attack-only dataset comment block. 
-    # You may also link to the full dataset which is ~12GB if you prefer.
-    # More information on BOTSv2 can be found at https://github.com/splunk/botsv2
-
-    ### BOTSv2 COMMENT BLOCK BEGINS ###
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/base64_11.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/jellyfisher_010.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/palo-alto-networks-add-on-for-splunk_611.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/SA-ctf_scoreboard_admin-master.zip  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/SA-ctf_scoreboard-master.zip  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sa-investigator-for-enterprise-security_200.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-apache-web-server_100.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-microsoft-cloud-services_310.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-microsoft-iis_101.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-microsoft-windows_600.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-symantec-endpoint-protection_230.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-unix-and-linux_602.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-app-for-osquery_10.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-common-information-model-cim_4130.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-security-essentials_241.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-ta-for-suricata_233.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/ssl-certificate-checker_32.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/url-toolbox_16.tgz  -auth 'admin:changeme'
-    # /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/website-monitoring_274.tgz  -auth 'admin:changeme'
-
-    ### UNCOMMENT THIS BLOCK FOR THE ATTACK-ONLY DATASET (Recommended) ###
-    # echo "[$(date +%H:%M:%S)]: Downloading Splunk BOTSv2 Attack Only Dataset..."
-    # wget --progress=bar:force -P /opt/ https://s3.amazonaws.com/botsdataset/botsv2/botsv2_data_set_attack_only.tgz
-    # echo "[$(date +%H:%M:%S)]: Download Complete."
-    # echo "[$(date +%H:%M:%S)]: Extracting to Splunk Apps directory"
-    # tar zxvf /opt/botsv2_data_set_attack_only.tgz -C /opt/splunk/etc/apps/
-    ### ATTACK-ONLY COMMENT BLOCK ENDS ###
-
-    ### UNCOMMENT THIS BLOCK FOR THE FULL 12GB DATASET (Not recommended) ###
-    # echo "[$(date +%H:%M:%S)]: Downloading Splunk BOTSv2..."
-    # wget --progress=bar:force https://s3.amazonaws.com/botsdataset/botsv2/botsv2_data_set.tgz /opt/
-    # echo "[$(date +%H:%M:%S)]: Download Complete."
-    # echo "[$(date +%H:%M:%S)]: Extracting to Splunk Apps directory"
-    # tar zxvf botsv2_data_set.tgz /opt/splunk/etc/apps
-    ### FULL DATASET COMMENT BLOCK ENDS ###
-    
-    ### BOTSv2 COMMENT BLOCK ENDS ###
-
     # Add custom Macro definitions for ThreatHunting App
     cp /vagrant/resources/splunk_server/macros.conf /opt/splunk/etc/apps/ThreatHunting/default/macros.conf
     # Fix Windows TA macros
@@ -209,7 +190,7 @@ install_splunk() {
     rm /opt/splunk/etc/apps/force_directed_viz/default/savedsearches.conf
 
     # Add a Splunk TCP input on port 9997
-    echo -e "[splunktcp://9997]\nconnection_host = ip" > /opt/splunk/etc/apps/search/local/inputs.conf
+    echo -e "[splunktcp://9997]\nconnection_host = ip" >/opt/splunk/etc/apps/search/local/inputs.conf
     # Add props.conf and transforms.conf
     cp /vagrant/resources/splunk_server/props.conf /opt/splunk/etc/apps/search/local/
     cp /vagrant/resources/splunk_server/transforms.conf /opt/splunk/etc/apps/search/local/
@@ -221,29 +202,25 @@ install_splunk() {
     echo "[$(date +%H:%M:%S)]: Disabling the Splunk tour prompt..."
     touch /opt/splunk/etc/.ui_login
     mkdir -p /opt/splunk/etc/users/admin/search/local
-    echo -e "[search-tour]\nviewed = 1" > /opt/splunk/etc/system/local/ui-tour.conf
+    echo -e "[search-tour]\nviewed = 1" >/opt/splunk/etc/system/local/ui-tour.conf
     # Source: https://answers.splunk.com/answers/660728/how-to-disable-the-modal-pop-up-help-us-to-improve.html
+    if [ ! -d "/opt/splunk/etc/users/admin/user-prefs/local" ]; then
+      mkdir -p "/opt/splunk/etc/users/admin/user-prefs/local"
+    fi
     echo '[general]
-render_version_messages = 0
-hideInstrumentationOptInModal = 1
-dismissedInstrumentationOptInVersion = 1
-[general_default]
-hideInstrumentationOptInModal = 1
-showWhatsNew = 0
-notification_python_3_impact = false' > /opt/splunk/etc/system/local/user-prefs.conf
-    echo '[general]
-render_version_messages = 0
-hideInstrumentationOptInModal = 1
-dismissedInstrumentationOptInVersion = 1
-[general_default]
-hideInstrumentationOptInModal = 1
-showWhatsNew = 0
-notification_python_3_impact = false' > /opt/splunk/etc/apps/user-prefs/local/user-prefs.conf
-  # Disable the instrumentation popup
-  echo -e "showOptInModal = 0\noptInVersionAcknowledged = 4" >> /opt/splunk/etc/apps/splunk_instrumentation/local/telemetry.conf
-
+render_version_messages = 1
+dismissedInstrumentationOptInVersion = 4
+notification_python_3_impact = false
+display.page.home.dashboardId = /servicesNS/nobody/search/data/ui/views/logger_dashboard' > /opt/splunk/etc/users/admin/user-prefs/local/user-prefs.conf
+    # Disable the instrumentation popup
+    echo -e "showOptInModal = 0\noptInVersionAcknowledged = 4" >>/opt/splunk/etc/apps/splunk_instrumentation/local/telemetry.conf
     # Enable SSL Login for Splunk
-    echo -e "[settings]\nenableSplunkWebSSL = true" > /opt/splunk/etc/system/local/web.conf
+    echo -e "[settings]\nenableSplunkWebSSL = true" >/opt/splunk/etc/system/local/web.conf
+    # Copy over the Logger Dashboard
+    if [ ! -d "/opt/splunk/etc/apps/search/local/data/ui/views" ]; then
+      mkdir -p "/opt/splunk/etc/apps/search/local/data/ui/views"
+    fi
+    cp /vagrant/resources/splunk_server/logger_dashboard.xml /opt/splunk/etc/apps/search/local/data/ui/views || echo "Unable to find dashboard"
     # Reboot Splunk to make changes take effect
     /opt/splunk/bin/splunk restart
     /opt/splunk/bin/splunk enable boot-start
@@ -271,8 +248,8 @@ install_fleet() {
     echo "[$(date +%H:%M:%S)]: Fleet is already installed"
   else
     echo "[$(date +%H:%M:%S)]: Installing Fleet..."
-    echo -e "\n127.0.0.1       kolide" >> /etc/hosts
-    echo -e "\n127.0.0.1       logger" >> /etc/hosts
+    echo -e "\n127.0.0.1       kolide" >>/etc/hosts
+    echo -e "\n127.0.0.1       logger" >>/etc/hosts
     cd /opt && git clone https://github.com/kolide/kolide-quickstart.git
     cd /opt/kolide-quickstart || echo "Something went wrong while trying to clone the kolide-quickstart repository"
     cp /vagrant/resources/fleet/server.* .
@@ -313,19 +290,17 @@ import_osquery_config_into_fleet() {
   sed -i 's/interval: 3600/interval: 180/g' osquery-configuration/Fleet/Endpoints/Windows/osquery.yaml
   sed -i 's/interval: 28800/interval: 900/g' osquery-configuration/Fleet/Endpoints/MacOS/osquery.yaml
   sed -i 's/interval: 28800/interval: 900/g' osquery-configuration/Fleet/Endpoints/Windows/osquery.yaml
-  # These can be removed after this PR is merged: https://github.com/palantir/osquery-configuration/pull/14
-  sed -i "s/labels: null/labels:\n    - MS Windows/g" osquery-configuration/Fleet/Endpoints/Windows/osquery.yaml
-  sed -i "s/labels: null/labels:\n    - MS Windows/g" osquery-configuration/Fleet/Endpoints/packs/windows-application-security.yaml
-  sed -i "s/labels: null/labels:\n    - MS Windows/g" osquery-configuration/Fleet/Endpoints/packs/windows-compliance.yaml
-  sed -i "s/labels: null/labels:\n    - MS Windows/g" osquery-configuration/Fleet/Endpoints/packs/windows-registry-monitoring.yaml
-  sed -i "s/labels: null/labels:\n    - MS Windows\n    - macOS/g" osquery-configuration/Fleet/Endpoints/packs/performance-metrics.yaml
-  sed -i "s/labels: null/labels:\n    - MS Windows\n    - macOS/g" osquery-configuration/Fleet/Endpoints/packs/security-tooling-checks.yaml
+
+  # Don't log osquery INFO messages
+  fleetctl get options > /tmp/options.yaml
+  /usr/bin/yq w -i /tmp/options.yaml 'spec.config.options.logger_min_status' '1'
+  fleetctl apply -f /tmp/options.yaml
 
   # Use fleetctl to import YAML files
   fleetctl apply -f osquery-configuration/Fleet/Endpoints/MacOS/osquery.yaml
   fleetctl apply -f osquery-configuration/Fleet/Endpoints/Windows/osquery.yaml
-  for pack in osquery-configuration/Fleet/Endpoints/packs/*.yaml
-    do fleetctl apply -f "$pack"
+  for pack in osquery-configuration/Fleet/Endpoints/packs/*.yaml; do
+    fleetctl apply -f "$pack"
   done
 
   # Add Splunk monitors for Fleet
@@ -343,13 +318,13 @@ install_zeek() {
   SPLUNK_SURICATA_SOURCETYPE='json_suricata'
   sh -c "echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_18.04/ /' > /etc/apt/sources.list.d/security:zeek.list"
   wget -nv https://download.opensuse.org/repositories/security:zeek/xUbuntu_18.04/Release.key -O /tmp/Release.key
-  apt-key add - < /tmp/Release.key
+  apt-key add - </tmp/Release.key
   # Update APT repositories
   apt-get -qq -ym update
   # Install tools to build and configure Zeek
   apt-get -qq -ym install zeek crudini python-pip
   export PATH=$PATH:/opt/zeek/bin
-  pip install zkg
+  pip install zkg==2.1.1
   zkg refresh
   zkg autoconfig
   zkg install --force salesforce/ja3
@@ -373,7 +348,7 @@ install_zeek() {
   redef Intel::read_files += {
     "/opt/zeek/etc/intel.dat"
   };
-  ' >> /opt/zeek/share/zeek/site/local.zeek
+  ' >>/opt/zeek/share/zeek/site/local.zeek
 
   # Configure Zeek
   crudini --del $NODECFG zeek
@@ -397,30 +372,30 @@ install_zeek() {
   mkdir -p $SPLUNK_ZEEK_JSON/local
   cp $SPLUNK_ZEEK_JSON/default/inputs.conf $SPLUNK_ZEEK_JSON/local/inputs.conf
 
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR index   zeek
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR sourcetype   bro:json
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR whitelist   '.*\.log$'
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR blacklist   '.*(communication|stderr)\.log$'
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR disabled   0
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR index   suricata
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR sourcetype   suricata:json
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR whitelist   'eve.json'
-  crudini --set  $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR disabled   0
-  crudini --set  $SPLUNK_ZEEK_JSON/local/props.conf  $SPLUNK_SURICATA_SOURCETYPE TRUNCATE    0
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR index zeek
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR sourcetype bro:json
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR whitelist '.*\.log$'
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR blacklist '.*(communication|stderr)\.log$'
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR disabled 0
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR index suricata
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR sourcetype suricata:json
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR whitelist 'eve.json'
+  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR disabled 0
+  crudini --set $SPLUNK_ZEEK_JSON/local/props.conf $SPLUNK_SURICATA_SOURCETYPE TRUNCATE 0
 
   # Ensure permissions are correct and restart splunk
   chown -R splunk $SPLUNK_ZEEK_JSON
   /opt/splunk/bin/splunk restart
 
   # Verify that Zeek is running
-  if ! pgrep -f zeek > /dev/null; then
+  if ! pgrep -f zeek >/dev/null; then
     echo "Zeek attempted to start but is not running. Exiting"
     exit 1
   fi
 }
 
 install_suricata() {
-  # Run iwr -Uri testmyids.com -UserAgent "BlackSun" in Powershell to generate test alerts
+  # Run iwr -Uri testmyids.com -UserAgent "BlackSun" in Powershell to generate test alerts from Windows
   echo "[$(date +%H:%M:%S)]: Installing Suricata..."
 
   # Install suricata
@@ -431,43 +406,16 @@ install_suricata() {
   git clone https://github.com/OISF/suricata-update.git
   cd /opt/suricata-update || exit 1
   python setup.py install
-  # Add DC_SERVERS variable to suricata.yaml in support et-open signatures
-  yq w -i /etc/suricata/suricata.yaml vars.address-groups.DC_SERVERS '$HOME_NET'
 
-  # It may make sense to store the suricata.yaml file as a resource file if this begins to become too complex
-  # Add more verbose alert logging
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.payload true
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.payload-buffer-size 4kb
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.payload-printable yes
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.packet yes
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.http yes
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.tls yes
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.ssh yes
-  yq w -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.0.alert.smtp yes
-  # Turn off traffic flow logging (duplicative of Zeek and wrecks Splunk trial license)
-  yq d -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.1 # Remove HTTP
-  yq d -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.1 # Remove DNS
-  yq d -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.1 # Remove TLS
-  yq d -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.2 # Remove SMTP
-  yq d -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.2 # Remove SSH
-  yq d -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.2 # Remove Stats
-  yq d -i /etc/suricata/suricata.yaml outputs.1.eve-log.types.2 # Remove Flow
-  # Enable JA3 fingerprinting
-  yq w -i /etc/suricata/suricata.yaml app-layer.protocols.tls.ja3-fingerprints true
-  # AF packet monitoring should be set to eth1
-  yq w -i /etc/suricata/suricata.yaml af-packet.0.interface eth1
-
+  cp /vagrant/resources/suricata/suricata.yaml /etc/suricata/suricata.yaml
   crudini --set --format=sh /etc/default/suricata '' iface eth1
   # update suricata signature sources
   suricata-update update-sources
   # disable protocol decode as it is duplicative of Zeek
-  echo re:protocol-command-decode >> /etc/suricata/disable.conf
+  echo re:protocol-command-decode >>/etc/suricata/disable.conf
   # enable et-open and attackdetection sources
   suricata-update enable-source et/open
   suricata-update enable-source ptresearch/attackdetection
-  # Add the YAML header to the top of the suricata config
-  echo "Adding the YAML header to /etc/suricata/suricata.yaml"
-  echo -e "%YAML 1.1\n---\n$(cat /etc/suricata/suricata.yaml)" > /etc/suricata/suricata.yaml
 
   # Update suricata and restart
   suricata-update
@@ -476,22 +424,21 @@ install_suricata() {
   sleep 3
 
   # Verify that Suricata is running
-  if ! pgrep -f suricata > /dev/null; then
+  if ! pgrep -f suricata >/dev/null; then
     echo "Suricata attempted to start but is not running. Exiting"
     exit 1
   fi
 }
 
 test_suricata_prerequisites() {
-  for package in suricata crudini
-  do
+  for package in suricata crudini; do
     echo "[$(date +%H:%M:%S)]: [TEST] Validating that $package is correctly installed..."
     # Loop through each package using dpkg
-    if ! dpkg -S $package > /dev/null; then
+    if ! dpkg -S $package >/dev/null; then
       # If which returns a non-zero return code, try to re-install the package
       echo "[-] $package was not found. Attempting to reinstall."
       apt-get clean && apt-get -qq update && apt-get install -y $package
-      if ! which $package > /dev/null; then
+      if ! which $package >/dev/null; then
         # If the reinstall fails, give up
         echo "[X] Unable to install $package even after a retry. Exiting."
         exit 1
@@ -508,7 +455,7 @@ install_guacamole() {
   apt-get -qq install -y libcairo2-dev libjpeg62-dev libpng-dev libossp-uuid-dev libfreerdp-dev libpango1.0-dev libssh2-1-dev libssh-dev tomcat8 tomcat8-admin tomcat8-user
   wget --progress=bar:force "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/1.0.0/source/guacamole-server-1.0.0.tar.gz" -O guacamole-server-1.0.0.tar.gz
   tar -xvf guacamole-server-1.0.0.tar.gz && cd guacamole-server-1.0.0
-  ./configure &> /dev/null && make --quiet &> /dev/null && make --quiet install &> /dev/null || echo "[-] An error occurred while installing Guacamole."
+  ./configure &>/dev/null && make --quiet &>/dev/null && make --quiet install &>/dev/null || echo "[-] An error occurred while installing Guacamole."
   ldconfig
   cd /var/lib/tomcat8/webapps
   wget --progress=bar:force "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/1.0.0/binary/guacamole-1.0.0.war" -O guacamole.war
@@ -527,7 +474,7 @@ install_guacamole() {
 
 postinstall_tasks() {
   # Include Splunk and Zeek in the PATH
-  echo export PATH="$PATH:/opt/splunk/bin:/opt/zeek/bin" >> ~/.bashrc
+  echo export PATH="$PATH:/opt/splunk/bin:/opt/zeek/bin" >>~/.bashrc
   # Ping DetectionLab server for usage statistics
   curl -A "DetectionLab-logger" "https://detectionlab.network/logger"
 }
