@@ -6,4 +6,3 @@ locals {
   phantom_url   = "https://${aws_instance.phantom.public_ip}"
   phantom_instance_id = "${aws_instance.phantom.id}"
 }
-
