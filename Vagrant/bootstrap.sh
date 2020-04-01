@@ -164,7 +164,6 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz  -auth 'admin:changeme'
     # AdvSim apps
-    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/add-on-for-microsoft-sysmon_810.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_305.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-remote-search_109.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-app-for-phantom-reporting_100.tgz -auth 'admin:changeme'
