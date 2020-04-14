@@ -1,5 +1,13 @@
 #! /bin/bash
 
+# Get a free Maxmind license here: https://www.maxmind.com/en/geolite2/signup
+# Required for the ASNgen app to work: https://splunkbase.splunk.com/app/3531/
+export MAXMIND_LICENSE=
+if [ -z $MAXMIND_LICENSE ]; then
+  echo "Note: You have not entered a MaxMind license key on line 5 of bootstrap.sh, so the ASNgen Splunk app may not work correctly."
+  echo "However, it is not required and everything else should function correctly."
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 echo "apt-fast apt-fast/maxdownloads string 10" | debconf-set-selections
 echo "apt-fast apt-fast/dlflag boolean true" | debconf-set-selections
@@ -152,8 +160,9 @@ install_splunk() {
     /opt/splunk/bin/splunk add index suricata -auth 'admin:changeme'
     /opt/splunk/bin/splunk add index threathunting -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_forwarder/splunk-add-on-for-microsoft-windows_700.tgz -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/add-on-for-microsoft-sysmon_1062.tgz -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/asn-lookup-generator_101.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-microsoft-sysmon_1062.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/asn-lookup-generator_110.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/lookup-file-editor_331.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-zeek-aka-bro_400.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz -auth 'admin:changeme'
@@ -163,13 +172,13 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz  -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz  -auth 'admin:changeme'
+    
     # AdvSim apps
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_305.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-remote-search_109.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-app-for-phantom-reporting_100.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/base64_11.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/lookup-file-editor_332.tgz -auth 'admin:changeme'
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-common-information-model-cim_4130.tgz -auth 'admin:changeme'
     #Install a slightly modified version of CIM app with acceleration enabled for Endpoint and Change Datamodels
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-cim-4130-w-acceleration.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-security-essentials_252.tgz -auth 'admin:changeme'
@@ -178,6 +187,13 @@ install_splunk() {
     git clone https://github.com/daveherrald/SA-attck_nav.git
     cp /opt/AdversarySimulation/resources/dect_lab_attck_assets.csv ./SA-attck_nav/lookups/attck_assets.csv
     cd -
+
+    # Install the Maxmind license key for the ASNgen App
+    if [ ! -z $MAXMIND_LICENSE ]; then
+      mkdir /opt/splunk/etc/apps/TA-asngen/local 
+      cp /opt/splunk/etc/apps/TA-asngen/default/asngen.conf /opt/splunk/etc/apps/TA-asngen/local/asngen.conf
+      sed -i "s/license_key =/license_key = $MAXMIND_LICENSE/g" /opt/splunk/etc/apps/TA-asngen/local/asngen.conf
+    fi
 
     # Add custom Macro definitions for ThreatHunting App
     cp /vagrant/resources/splunk_server/macros.conf /opt/splunk/etc/apps/ThreatHunting/default/macros.conf
@@ -211,8 +227,6 @@ render_version_messages = 1
 dismissedInstrumentationOptInVersion = 4
 notification_python_3_impact = false
 display.page.home.dashboardId = /servicesNS/nobody/search/data/ui/views/logger_dashboard' > /opt/splunk/etc/users/admin/user-prefs/local/user-prefs.conf
-    # Disable the instrumentation popup
-    echo -e "showOptInModal = 0\noptInVersionAcknowledged = 4" >>/opt/splunk/etc/apps/splunk_instrumentation/local/telemetry.conf
     # Enable SSL Login for Splunk
     echo -e "[settings]\nenableSplunkWebSSL = true" >/opt/splunk/etc/system/local/web.conf
     # Copy over the Logger Dashboard
@@ -220,11 +234,6 @@ display.page.home.dashboardId = /servicesNS/nobody/search/data/ui/views/logger_d
       mkdir -p "/opt/splunk/etc/apps/search/local/data/ui/views"
     fi
     cp /vagrant/resources/splunk_server/logger_dashboard.xml /opt/splunk/etc/apps/search/local/data/ui/views || echo "Unable to find dashboard"
-    # Reboot Splunk to make changes take effect
-    /opt/splunk/bin/splunk restart
-    /opt/splunk/bin/splunk enable boot-start
-    # Generate the ASN lookup table
-    /opt/splunk/bin/splunk search "|asngen | outputlookup asn" -auth 'admin:changeme'
 
     # AdvSim: Fix admin role to include Phantom pieces
     curl -k -u admin:changeme https://localhost:8089/services/authorization/roles/admin -d imported_roles=phantom -d imported_roles=power -d imported_roles=user
@@ -238,6 +247,10 @@ display.page.home.dashboardId = /servicesNS/nobody/search/data/ui/views/logger_d
     # Update ThreatHunting Permissions
     curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/ThreatHunting/acl -d sharing=global -d owner=nobody
     curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/Splunk_Security_Essentials/acl -d sharing=global -d owner=nobody
+    
+    # Reboot Splunk to make changes take effect
+    /opt/splunk/bin/splunk restart
+    /opt/splunk/bin/splunk enable boot-start
   fi
 }
 
@@ -317,7 +330,7 @@ install_zeek() {
   SPLUNK_SURICATA_SOURCETYPE='json_suricata'
   sh -c "echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_18.04/ /' > /etc/apt/sources.list.d/security:zeek.list"
   wget -nv https://download.opensuse.org/repositories/security:zeek/xUbuntu_18.04/Release.key -O /tmp/Release.key
-  apt-key add - </tmp/Release.key
+  apt-key add - </tmp/Release.key &>/dev/null
   # Update APT repositories
   apt-get -qq -ym update
   # Install tools to build and configure Zeek
@@ -453,7 +466,7 @@ install_guacamole() {
   cd /opt
   apt-get -qq install -y libcairo2-dev libjpeg62-dev libpng-dev libossp-uuid-dev libfreerdp-dev libpango1.0-dev libssh2-1-dev libssh-dev tomcat8 tomcat8-admin tomcat8-user
   wget --progress=bar:force "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/1.0.0/source/guacamole-server-1.0.0.tar.gz" -O guacamole-server-1.0.0.tar.gz
-  tar -xvf guacamole-server-1.0.0.tar.gz && cd guacamole-server-1.0.0
+  tar -xf guacamole-server-1.0.0.tar.gz && cd guacamole-server-1.0.0
   ./configure &>/dev/null && make --quiet &>/dev/null && make --quiet install &>/dev/null || echo "[-] An error occurred while installing Guacamole."
   ldconfig
   cd /var/lib/tomcat8/webapps
@@ -475,7 +488,7 @@ postinstall_tasks() {
   # Include Splunk and Zeek in the PATH
   echo export PATH="$PATH:/opt/splunk/bin:/opt/zeek/bin" >>~/.bashrc
   # Ping DetectionLab server for usage statistics
-  curl -A "DetectionLab-logger" "https://detectionlab.network/logger"
+  curl -s -A "DetectionLab-logger" "https://detectionlab.network/logger"
 }
 
 main() {
