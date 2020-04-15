@@ -162,7 +162,6 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_forwarder/splunk-add-on-for-microsoft-windows_700.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-microsoft-sysmon_1062.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/asn-lookup-generator_110.tgz -auth 'admin:changeme'
-    /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/lookup-file-editor_331.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/splunk-add-on-for-zeek-aka-bro_400.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/force-directed-app-for-splunk_200.tgz -auth 'admin:changeme'
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/punchcard-custom-visualization_130.tgz -auth 'admin:changeme'
@@ -174,20 +173,20 @@ install_splunk() {
     /opt/splunk/bin/splunk install app /vagrant/resources/splunk_server/sankey-diagram-custom-visualization_130.tgz  -auth 'admin:changeme'
     
     # AdvSim apps
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_305.tgz -auth 'admin:changeme'
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-remote-search_109.tgz -auth 'admin:changeme'
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-app-for-phantom-reporting_100.tgz -auth 'admin:changeme'
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/base64_11.tgz -auth 'admin:changeme'
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/lookup-file-editor_332.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-app-for-splunk_305.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/phantom-remote-search_109.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-app-for-phantom-reporting_100.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/base64_11.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/lookup-file-editor_332.tgz -auth 'admin:changeme'
     
-    #Install a slightly modified version of CIM app with acceleration enabled for Endpoint and Change Datamodels
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-cim-4130-w-acceleration.tgz -auth 'admin:changeme'
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-security-essentials_252.tgz -auth 'admin:changeme'
-    #/opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-es-content-update_1049.tgz -auth 'admin:changeme'
-    #cd /opt/splunk/etc/apps
-    #git clone https://github.com/daveherrald/SA-attck_nav.git
-    #cp /opt/AdversarySimulation/resources/dect_lab_attck_assets.csv ./SA-attck_nav/lookups/attck_assets.csv
-    #cd -
+    #Install a slightly modified version of CIM app with acceleration enabled for Various Datamodels
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-cim-with-accel-4150.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-security-essentials_310.tgz -auth 'admin:changeme'
+    /opt/splunk/bin/splunk install app /opt/AdversarySimulation/resources/splunk_apps/splunk-es-content-update_1053.tgz -auth 'admin:changeme'
+    cd /opt/splunk/etc/apps
+    git clone https://github.com/daveherrald/SA-attck_nav.git
+    cp /opt/AdversarySimulation/resources/dect_lab_attck_assets.csv ./SA-attck_nav/lookups/attck_assets.csv
+    cd -
 
     # Install the Maxmind license key for the ASNgen App
     if [ ! -z $MAXMIND_LICENSE ]; then
