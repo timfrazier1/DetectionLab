@@ -235,6 +235,10 @@ display.page.home.dashboardId = /servicesNS/nobody/search/data/ui/views/logger_d
     fi
     cp /vagrant/resources/splunk_server/logger_dashboard.xml /opt/splunk/etc/apps/search/local/data/ui/views || echo "Unable to find dashboard"
 
+    # Reboot Splunk to make changes take effect
+    /opt/splunk/bin/splunk restart
+    /opt/splunk/bin/splunk enable boot-start
+
     # AdvSim: Fix admin role to include Phantom pieces
     curl -k -u admin:changeme https://localhost:8089/services/authorization/roles/admin -d imported_roles=phantom -d imported_roles=power -d imported_roles=user
     curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/phantom/configs/conf-phantom/verify_certs\?output_mode\=json -d value=0
@@ -250,7 +254,6 @@ display.page.home.dashboardId = /servicesNS/nobody/search/data/ui/views/logger_d
     
     # Reboot Splunk to make changes take effect
     /opt/splunk/bin/splunk restart
-    /opt/splunk/bin/splunk enable boot-start
   fi
 }
 
