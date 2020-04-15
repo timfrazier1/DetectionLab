@@ -236,17 +236,17 @@ display.page.home.dashboardId = /servicesNS/nobody/search/data/ui/views/logger_d
     cp /vagrant/resources/splunk_server/logger_dashboard.xml /opt/splunk/etc/apps/search/local/data/ui/views || echo "Unable to find dashboard"
 
     # AdvSim: Fix admin role to include Phantom pieces
-    #curl -k -u admin:changeme https://localhost:8089/services/authorization/roles/admin -d imported_roles=phantom -d imported_roles=power -d imported_roles=user
-    #curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/phantom/configs/conf-phantom/verify_certs\?output_mode\=json -d value=0
+    curl -k -u admin:changeme https://localhost:8089/services/authorization/roles/admin -d imported_roles=phantom -d imported_roles=power -d imported_roles=user
+    curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/phantom/configs/conf-phantom/verify_certs\?output_mode\=json -d value=0
 
     # AdvSim: Allow remote login so Phantom can POST to Splunk by default
-    #curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/search/configs/conf-server/general -d allowRemoteLogin=always
+    curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/search/configs/conf-server/general -d allowRemoteLogin=always
 
     # AdvSim: Update master layer in ATT&CK Nav
-    #curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
+    curl -k -u admin:changeme https://localhost:8089/services/search/jobs -d namespace="/services/app/SA-attck_nav" -d search="|makeresults 1 | genatklayer reset=1"
     # Update ThreatHunting Permissions
-    #curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/ThreatHunting/acl -d sharing=global -d owner=nobody
-    #curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/Splunk_Security_Essentials/acl -d sharing=global -d owner=nobody
+    curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/ThreatHunting/acl -d sharing=global -d owner=nobody
+    curl -k -u admin:changeme https://localhost:8089/servicesNS/nobody/system/apps/local/Splunk_Security_Essentials/acl -d sharing=global -d owner=nobody
     
     # Reboot Splunk to make changes take effect
     /opt/splunk/bin/splunk restart

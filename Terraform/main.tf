@@ -198,9 +198,8 @@ resource "aws_instance" "phantom" {
   ami           = coalesce(var.phantom_ami, data.aws_ami.phantom_ami.image_id)
 
   tags = {
-    Name = "Phantom 4.6"
+    Name = "Phantom 4.8"
   }
-#  ami = "ami-081754fc6dc359927"
 
   subnet_id              = aws_subnet.default.id
   vpc_security_group_ids = [aws_security_group.phantom.id]
