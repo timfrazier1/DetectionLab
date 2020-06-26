@@ -1,9 +1,16 @@
 #! /bin/bash
 
+# Override existing DNS Settings using netplan, but don't do it for Terraform builds
+if ! curl -s 169.254.169.254 --connect-timeout 2 >/dev/null; then
+  echo -e "    eth1:\n      dhcp4: true\n      nameservers:\n        addresses: [8.8.8.8,8.8.4.4]" >> /etc/netplan/01-netcfg.yaml
+  netplan apply
+fi
+sed -i 's/nameserver 127.0.0.53/nameserver 8.8.8.8/g' /etc/resolv.conf && chattr +i /etc/resolv.conf
+
 # Get a free Maxmind license here: https://www.maxmind.com/en/geolite2/signup
 # Required for the ASNgen app to work: https://splunkbase.splunk.com/app/3531/
 export MAXMIND_LICENSE=
-if [ -z $MAXMIND_LICENSE ]; then
+if [ -n "$MAXMIND_LICENSE" ]; then
   echo "Note: You have not entered a MaxMind license key on line 5 of bootstrap.sh, so the ASNgen Splunk app may not work correctly."
   echo "However, it is not required and everything else should function correctly."
 fi
@@ -65,7 +72,7 @@ test_prerequisites() {
 
 fix_eth1_static_ip() {
   USING_KVM=$(sudo lsmod | grep kvm)
-  if [ ! -z "$USING_KVM" ]; then
+  if [ -n "$USING_KVM" ]; then
     echo "[*] Using KVM, no need to fix DHCP for eth1 iface"
     return 0
   fi
@@ -83,7 +90,7 @@ fix_eth1_static_ip() {
   }' >>/etc/dhcp/dhclient.conf
   netplan apply
   # Fix eth1 if the IP isn't set correctly
-  ETH1_IP=$(ip -4 addr show eth1 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+  ETH1_IP=$(ip -4 addr show eth1 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
   if [ "$ETH1_IP" != "192.168.38.105" ]; then
     echo "Incorrect IP Address settings detected. Attempting to fix."
     ifdown eth1
@@ -120,24 +127,8 @@ install_splunk() {
     #echo "[$(date +%H:%M:%S)]: Attempting to autoresolve the latest version of Splunk..."
     #LATEST_SPLUNK=$(curl https://www.splunk.com/en_us/download/splunk-enterprise.html | grep -i deb | grep -Eo "data-link=\"................................................................................................................................" | cut -d '"' -f 2)
     # Sanity check what was returned from the auto-parse attempt
-    # AdvSim: Commenting this to hardcode the version for AdvSim
-    #if [[ "$(echo $LATEST_SPLUNK | grep -c "^https:")" -eq 1 ]] && [[ "$(echo $LATEST_SPLUNK | grep -c "\.deb$")" -eq 1 ]]; then
-    #  echo "[$(date +%H:%M:%S)]: The URL to the latest Splunk version was automatically resolved as: $LATEST_SPLUNK"
-    #  echo "[$(date +%H:%M:%S)]: Attempting to download..."
-    #  wget --progress=bar:force -P splunk/ "$LATEST_SPLUNK"
-    #else
-    #  echo "[$(date +%H:%M:%S)]: Unable to auto-resolve the latest Splunk version. Falling back to hardcoded URL..."
-      # Download Hardcoded Splunk
-      #wget --progress=bar:force -O splunk/splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb 'https://www.splunk.com/bin/splunk/DownloadActivityServlet?architecture=x86_64&platform=linux&version=7.2.6&product=splunk&filename=splunk-7.2.6-c0bf0f679ce9-linux-2.6-amd64.deb&wget=true'
-    #fi
-    
-    # AdvSim: Hardcoding Splunk version to work with AdvSim
-    #echo "[$(date +%H:%M:%S)]: Downloading Splunk version 7.3.1.1"
 
-    #wget --progress=bar:force -O splunk/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb 'https://www.splunk.com/page/download_track?file=7.3.1.1/linux/splunk-7.3.1.1-7651b7244cf2-linux-2.6-amd64.deb&ac=&wget=true&name=wget&platform=Linux&architecture=x86_64&version=7.3.1.1&product=splunk&typed=release'
-
-    #dpkg -i splunk/*.deb
-    if [[ "$(echo $LATEST_SPLUNK | grep -c "^https:")" -eq 1 ]] && [[ "$(echo $LATEST_SPLUNK | grep -c "\.deb$")" -eq 1 ]]; then
+    if [[ "$(echo "$LATEST_SPLUNK" | grep -c "^https:")" -eq 1 ]] && [[ "$(echo "$LATEST_SPLUNK" | grep -c "\.deb$")" -eq 1 ]]; then
       echo "[$(date +%H:%M:%S)]: The URL to the latest Splunk version was automatically resolved as: $LATEST_SPLUNK"
       echo "[$(date +%H:%M:%S)]: Attempting to download..."
       wget --progress=bar:force -P /opt "$LATEST_SPLUNK"
@@ -146,7 +137,15 @@ install_splunk() {
       # Download Hardcoded Splunk
       wget --progress=bar:force -O /opt/splunk-8.0.2-a7f645ddaf91-linux-2.6-amd64.deb 'https://download.splunk.com/products/splunk/releases/8.0.2/linux/splunk-8.0.2-a7f645ddaf91-linux-2.6-amd64.deb&wget=true'
     fi
-    dpkg -i /opt/splunk*.deb
+    if ! ls /opt/splunk*.deb 1> /dev/null 2>&1; then
+      echo "Something went wrong while trying to download Splunk. This script cannot continue. Exiting."
+      exit 1
+    fi
+    if ! dpkg -i /opt/splunk*.deb > /dev/null; then
+      echo "Something went wrong while trying to install Splunk. This script cannot continue. Exiting."
+      exit 1
+    fi
+
     /opt/splunk/bin/splunk start --accept-license --answer-yes --no-prompt --seed-passwd changeme
     /opt/splunk/bin/splunk add index wineventlog -auth 'admin:changeme'
     /opt/splunk/bin/splunk add index osquery -auth 'admin:changeme'
@@ -184,7 +183,7 @@ install_splunk() {
     cd -
 
     # Install the Maxmind license key for the ASNgen App
-    if [ ! -z $MAXMIND_LICENSE ]; then
+    if [ -n "$MAXMIND_LICENSE" ]; then
       mkdir /opt/splunk/etc/apps/TA-asngen/local 
       cp /opt/splunk/etc/apps/TA-asngen/default/asngen.conf /opt/splunk/etc/apps/TA-asngen/local/asngen.conf
       sed -i "s/license_key =/license_key = $MAXMIND_LICENSE/g" /opt/splunk/etc/apps/TA-asngen/local/asngen.conf
@@ -281,7 +280,7 @@ download_palantir_osquery_config() {
 }
 
 import_osquery_config_into_fleet() {
-  cd /opt
+  cd /opt || exit 1
   wget --progress=bar:force https://github.com/kolide/fleet/releases/download/2.4.0/fleet.zip
   unzip fleet.zip -d fleet
   cp fleet/linux/fleetctl /usr/local/bin/fleetctl && chmod +x /usr/local/bin/fleetctl
@@ -299,8 +298,10 @@ import_osquery_config_into_fleet() {
   sed -i 's/interval: 28800/interval: 900/g' osquery-configuration/Fleet/Endpoints/Windows/osquery.yaml
 
   # Don't log osquery INFO messages
+  # Fix snapshot event formatting
   fleetctl get options > /tmp/options.yaml
   /usr/bin/yq w -i /tmp/options.yaml 'spec.config.options.logger_min_status' '1'
+  /usr/bin/yq w -i /tmp/options.yaml 'spec.config.options.logger_snapshot_event_type' '2'
   fleetctl apply -f /tmp/options.yaml
 
   # Use fleetctl to import YAML files
@@ -319,10 +320,6 @@ install_zeek() {
   echo "[$(date +%H:%M:%S)]: Installing Zeek..."
   # Environment variables
   NODECFG=/opt/zeek/etc/node.cfg
-  SPLUNK_ZEEK_JSON=/opt/splunk/etc/apps/Splunk_TA_bro
-  SPLUNK_ZEEK_MONITOR='monitor:///opt/zeek/spool/manager'
-  SPLUNK_SURICATA_MONITOR='monitor:///var/log/suricata'
-  SPLUNK_SURICATA_SOURCETYPE='json_suricata'
   sh -c "echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_18.04/ /' > /etc/apt/sources.list.d/security:zeek.list"
   wget -nv https://download.opensuse.org/repositories/security:zeek/xUbuntu_18.04/Release.key -O /tmp/Release.key
   apt-key add - </tmp/Release.key &>/dev/null
@@ -376,22 +373,16 @@ install_zeek() {
   systemctl enable zeek
   systemctl start zeek
 
-  mkdir -p $SPLUNK_ZEEK_JSON/local
-  cp $SPLUNK_ZEEK_JSON/default/inputs.conf $SPLUNK_ZEEK_JSON/local/inputs.conf
-
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR index zeek
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR sourcetype bro:json
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR whitelist '.*\.log$'
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR blacklist '.*(communication|stderr)\.log$'
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_ZEEK_MONITOR disabled 0
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR index suricata
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR sourcetype suricata:json
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR whitelist 'eve.json'
-  crudini --set $SPLUNK_ZEEK_JSON/local/inputs.conf $SPLUNK_SURICATA_MONITOR disabled 0
-  crudini --set $SPLUNK_ZEEK_JSON/local/props.conf $SPLUNK_SURICATA_SOURCETYPE TRUNCATE 0
+  # Configure the Splunk inputs 
+  mkdir -p /opt/splunk/etc/apps/Splunk_TA_bro/local && touch /opt/splunk/etc/apps/Splunk_TA_bro/local/inputs.conf
+  crudini --set /opt/splunk/etc/apps/Splunk_TA_bro/local/inputs.conf monitor:///opt/zeek/spool/manager index zeek
+  crudini --set /opt/splunk/etc/apps/Splunk_TA_bro/local/inputs.conf monitor:///opt/zeek/spool/manager sourcetype bro:json
+  crudini --set /opt/splunk/etc/apps/Splunk_TA_bro/local/inputs.conf monitor:///opt/zeek/spool/manager whitelist '.*\.log$'
+  crudini --set /opt/splunk/etc/apps/Splunk_TA_bro/local/inputs.conf monitor:///opt/zeek/spool/manager blacklist '.*(communication|stderr)\.log$'
+  crudini --set /opt/splunk/etc/apps/Splunk_TA_bro/local/inputs.conf monitor:///opt/zeek/spool/manager disabled 0
 
   # Ensure permissions are correct and restart splunk
-  chown -R splunk $SPLUNK_ZEEK_JSON
+  chown -R splunk /opt/splunk/etc/apps/Splunk_TA_bro
   /opt/splunk/bin/splunk restart
 
   # Verify that Zeek is running
@@ -423,6 +414,14 @@ install_suricata() {
   # enable et-open and attackdetection sources
   suricata-update enable-source et/open
   suricata-update enable-source ptresearch/attackdetection
+
+  # Configure the Splunk inputs
+  mkdir -p /opt/splunk/etc/apps/SplunkLightForwarder/local && touch /opt/splunk/etc/apps/SplunkLightForwarder/local/inputs.conf
+  crudini --set /opt/splunk/etc/apps/SplunkLightForwarder/local/inputs.conf monitor:///var/log/suricata index suricata
+  crudini --set /opt/splunk/etc/apps/SplunkLightForwarder/local/inputs.conf monitor:///var/log/suricata sourcetype suricata:json
+  crudini --set /opt/splunk/etc/apps/SplunkLightForwarder/local/inputs.conf monitor:///var/log/suricata whitelist 'eve.json'
+  crudini --set /opt/splunk/etc/apps/SplunkLightForwarder/local/inputs.conf monitor:///var/log/suricata disabled 0
+  crudini --set /opt/splunk/etc/apps/SplunkLightForwarder/local/props.conf json_suricata TRUNCATE 0
 
   # Update suricata and restart
   suricata-update
@@ -458,13 +457,13 @@ test_suricata_prerequisites() {
 
 install_guacamole() {
   echo "[$(date +%H:%M:%S)]: Installing Guacamole..."
-  cd /opt
+  cd /opt || exit 1
   apt-get -qq install -y libcairo2-dev libjpeg62-dev libpng-dev libossp-uuid-dev libfreerdp-dev libpango1.0-dev libssh2-1-dev libssh-dev tomcat8 tomcat8-admin tomcat8-user
   wget --progress=bar:force "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/1.0.0/source/guacamole-server-1.0.0.tar.gz" -O guacamole-server-1.0.0.tar.gz
-  tar -xf guacamole-server-1.0.0.tar.gz && cd guacamole-server-1.0.0
+  tar -xf guacamole-server-1.0.0.tar.gz && cd guacamole-server-1.0.0 || echo "[-] Unable to find the Guacamole folder."
   ./configure &>/dev/null && make --quiet &>/dev/null && make --quiet install &>/dev/null || echo "[-] An error occurred while installing Guacamole."
   ldconfig
-  cd /var/lib/tomcat8/webapps
+  cd /var/lib/tomcat8/webapps || echo "[-] Unable to find the tomcat8/webapps folder."
   wget --progress=bar:force "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/1.0.0/binary/guacamole-1.0.0.war" -O guacamole.war
   mkdir /etc/guacamole
   mkdir /usr/share/tomcat8/.guacamole
